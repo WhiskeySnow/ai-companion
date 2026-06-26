@@ -1,9 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import {
+  Search, Phone, Video, MoreHorizontal, Smile, Image, Mic,
+  Plus, Camera, File, Send, Pin, BellOff, ChevronRight,
+  X, Volume2, Play, Sparkles, MessageCircle,
+} from 'lucide-react'
 import { CharacterAvatar } from '@/components/ui/CharacterAvatar'
 import { useToast } from '@/components/ui/Toast'
-import { mockCharacters, mockConversations, mockReplies, type Message } from '@/lib/mockData'
+import { mockCharacters, mockConversations, mockAIReplies, type MockMessage, type MockCharacter } from '@/lib/mockData'
 
 const EMOJI_LIST = [
   '😊','😂','🥰','😍','🤔','😅','😭','😤',
@@ -13,12 +18,12 @@ const EMOJI_LIST = [
 ]
 
 const MORE_ACTIONS = [
-  { icon: '📷', label: '拍照', stub: '相机功能开发中' },
-  { icon: '🖼️', label: '图片', stub: '图片发送中...' },
-  { icon: '📁', label: '文件', stub: '文件功能开发中' },
-  { icon: '📞', label: '语音通话', stub: '语音通话功能开发中' },
-  { icon: '📹', label: '视频通话', stub: '视频通话功能开发中' },
-  { icon: '🎨', label: 'AI生图', stub: 'AI生图功能即将开放' },
+  { Icon: Camera, label: '拍照', stub: '相机功能开发中' },
+  { Icon: Image, label: '图片', stub: '图片发送中...' },
+  { Icon: File, label: '文件', stub: '文件功能开发中' },
+  { Icon: Phone, label: '语音', stub: '语音通话功能开发中' },
+  { Icon: Video, label: '视频', stub: '视频通话功能开发中' },
+  { Icon: Sparkles, label: 'AI生图', stub: 'AI生图功能即将开放' },
 ]
 
 function formatNow() {
@@ -27,15 +32,17 @@ function formatNow() {
 }
 
 function VoiceMessageBar({ duration }: { duration: number }) {
-  const bars = Array.from({ length: 10 }, (_, i) => 8 + Math.floor(Math.random() * 16))
+  const bars = Array.from({ length: 10 }, (_, i) => 8 + ((i * 7 + 3) % 16))
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
       <button style={{
         width: 28, height: 28, borderRadius: '50%',
         background: '#07C160', border: 'none', cursor: 'pointer',
-        color: '#fff', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
-      }}>▶</button>
+      }}>
+        <Play size={10} fill="#fff" />
+      </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         {bars.map((h, i) => (
           <div key={i} style={{
@@ -58,7 +65,7 @@ function ImagePlaceholder({ alt }: { alt?: string }) {
       alignItems: 'center', justifyContent: 'center',
       gap: 6,
     }}>
-      <span style={{ fontSize: 28 }}>🖼</span>
+      <Image size={28} color="#aaa" />
       {alt && <span style={{ fontSize: 11, color: '#888' }}>{alt}</span>}
     </div>
   )
@@ -80,7 +87,6 @@ export default function MessagesPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; charId: string } | null>(null)
   const [pinnedIds, setPinnedIds] = useState<string[]>(mockCharacters.filter(c => c.isPinned).map(c => c.id))
   const [mutedIds, setMutedIds] = useState<string[]>(mockCharacters.filter(c => c.isMuted).map(c => c.id))
-  const [typingText, setTypingText] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const replyCountRef = useRef<Record<string, number>>({})
@@ -93,7 +99,6 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentMessages, isTyping])
 
-  // Clear unread when selecting
   useEffect(() => {
     setUnreadCounts(prev => ({ ...prev, [selectedId]: 0 }))
   }, [selectedId])
@@ -105,7 +110,7 @@ export default function MessagesPage() {
     setShowEmoji(false)
     setShowMore(false)
 
-    const userMsg: Message = {
+    const userMsg: MockMessage = {
       id: Date.now().toString(),
       role: 'user',
       content: text,
@@ -117,21 +122,19 @@ export default function MessagesPage() {
       [selectedId]: [...(prev[selectedId] || []), userMsg],
     }))
 
-    const delay = 1500 + Math.random() * 1500
+    const delay = 1200 + Math.random() * 1200
     setTimeout(() => {
       setIsTyping(true)
       setTimeout(() => {
         setIsTyping(false)
-        const replies = mockReplies[selectedId] || ['嗯嗯，我明白了。']
+        const replies = mockAIReplies[selectedId] || ['嗯嗯']
         const count = replyCountRef.current[selectedId] || 0
         replyCountRef.current[selectedId] = (count + 1) % replies.length
         const replyText = replies[count % replies.length]
 
-        // Typewriter effect
         let charIdx = 0
-        setTypingText('')
         const aiMsgId = (Date.now() + 1).toString()
-        const aiMsg: Message = {
+        const aiMsg: MockMessage = {
           id: aiMsgId,
           role: 'ai',
           content: '',
@@ -184,7 +187,7 @@ export default function MessagesPage() {
     (c.remark && c.remark.includes(search))
   )
 
-  function getLastMsgPreview(char: typeof mockCharacters[0]) {
+  function getLastMsgPreview(char: MockCharacter) {
     const msgs = conversations[char.id]
     if (!msgs) return char.lastMessage
     const real = [...msgs].reverse().find(m => m.role !== 'system_time')
@@ -192,13 +195,10 @@ export default function MessagesPage() {
     return { type: real.type || 'text', content: real.content, time: real.timestamp || char.lastMessage.time }
   }
 
-  const relationshipColors: Record<string, string> = {
-    '挚友': '#EC4899',
-    '好友': '#6B9EFF',
-    '普通朋友': '#AAAAAA',
-    '暧昧': '#FFB347',
-    '恋人': '#FF6B6B',
-    '家人': '#4ADE80',
+  const onlineColor: Record<string, string> = {
+    online: '#07C160',
+    recent: '#FFB347',
+    offline: '#CCCCCC',
   }
 
   return (
@@ -228,9 +228,7 @@ export default function MessagesPage() {
                 onClick={e => { e.stopPropagation(); setShowSearch(s => !s) }}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: 4, borderRadius: 4 }}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
+                <Search size={16} />
               </button>
             </div>
           </div>
@@ -239,9 +237,7 @@ export default function MessagesPage() {
               background: '#E8E8E8', borderRadius: 6,
               display: 'flex', alignItems: 'center', padding: '6px 10px', gap: 6,
             }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" strokeWidth="2" width="13" height="13">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+              <Search size={13} color="#AAAAAA" />
               <input
                 autoFocus
                 value={search}
@@ -250,7 +246,9 @@ export default function MessagesPage() {
                 style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: '#1A1A1A', flex: 1 }}
               />
               {search && (
-                <button onClick={() => setSearch('')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', fontSize: 12 }}>✕</button>
+                <button onClick={() => setSearch('')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center' }}>
+                  <X size={12} />
+                </button>
               )}
             </div>
           )}
@@ -264,7 +262,6 @@ export default function MessagesPage() {
             const isMuted = mutedIds.includes(char.id)
             const unread = unreadCounts[char.id] || 0
             const lastMsg = getLastMsgPreview(char)
-            const relColor = relationshipColors[char.relationship] || '#AAAAAA'
 
             let msgPreview = lastMsg.content
             if (lastMsg.type === 'image') msgPreview = '[图片]'
@@ -289,16 +286,21 @@ export default function MessagesPage() {
               >
                 {/* Pin indicator */}
                 {isPinned && (
-                  <div style={{ position: 'absolute', top: 6, right: 8 }}>
-                    <svg viewBox="0 0 24 24" fill="#CCCCCC" width="10" height="10">
-                      <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
-                    </svg>
+                  <div style={{ position: 'absolute', top: 6, right: 8, color: '#CCCCCC' }}>
+                    <Pin size={10} />
                   </div>
                 )}
 
                 {/* Avatar with unread badge */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <CharacterAvatar avatarId={char.avatarId} size={40} />
+                  {/* Online dot */}
+                  <div style={{
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: 9, height: 9, borderRadius: '50%',
+                    background: onlineColor[char.onlineStatus] || '#CCCCCC',
+                    border: '1.5px solid #F5F5F5',
+                  }} />
                   {unread > 0 && !isMuted && (
                     <div style={{
                       position: 'absolute', top: -4, right: -4,
@@ -326,20 +328,12 @@ export default function MessagesPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
                       <span style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {char.name}
-                      </span>
-                      <span style={{
-                        fontSize: 10, color: relColor,
-                        border: `1px solid ${relColor}`, borderRadius: 8,
-                        padding: '0 5px', lineHeight: '14px',
-                        flexShrink: 0, opacity: 0.8,
-                      }}>
-                        {char.relationship}
+                        {char.remark || char.name}
                       </span>
                       {isMuted && (
-                        <svg viewBox="0 0 24 24" fill="#CCCCCC" width="11" height="11" style={{ flexShrink: 0 }}>
-                          <path d="M16.5 12A4.5 4.5 0 0 0 14 7.97V5.73L21 3v2.27l-3 .9v5.66a4.5 4.5 0 0 1-1.5.17zM3 4.27L4.27 3 21 19.73 19.73 21l-4.19-4.19A4.5 4.5 0 0 1 9.5 12h.5V9.27L3 4.27z"/>
-                        </svg>
+                        <span style={{ color: '#CCCCCC', display: 'flex', alignItems: 'center' }}>
+                          <BellOff size={11} />
+                        </span>
                       )}
                     </div>
                     <span style={{ fontSize: 11, color: '#AAAAAA', flexShrink: 0, marginLeft: 4 }}>{lastMsg.time}</span>
@@ -348,10 +342,7 @@ export default function MessagesPage() {
                     fontSize: 12, color: '#888888',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {lastMsg.type !== 'text' && (
-                      <span style={{ color: '#BBBBBB' }}>{msgPreview} </span>
-                    )}
-                    {lastMsg.type === 'text' && msgPreview}
+                    {msgPreview}
                   </div>
                 </div>
               </div>
@@ -368,7 +359,7 @@ export default function MessagesPage() {
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
               }}
             >
-              <span style={{ fontSize: 14 }}>+</span> 添加新伙伴
+              <Plus size={14} /> 添加新伙伴
             </button>
           </div>
         </div>
@@ -388,18 +379,18 @@ export default function MessagesPage() {
             <CharacterAvatar avatarId={selectedChar.avatarId} size={36} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 15, color: '#1A1A1A' }}>{selectedChar.name}</span>
-                <span style={{
-                  fontSize: 10,
-                  color: relationshipColors[selectedChar.relationship] || '#AAAAAA',
-                  border: `1px solid ${relationshipColors[selectedChar.relationship] || '#AAAAAA'}`,
-                  borderRadius: 8, padding: '0 5px', lineHeight: '14px', opacity: 0.8,
-                }}>
-                  {selectedChar.relationship}
+                <span style={{ fontWeight: 600, fontSize: 15, color: '#1A1A1A' }}>
+                  {selectedChar.remark || selectedChar.name}
                 </span>
+                {selectedChar.remark && (
+                  <span style={{ fontSize: 12, color: '#999' }}>{selectedChar.name}</span>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#07C160' }} />
-                  <span style={{ fontSize: 11, color: '#888' }}>在线</span>
+                  <div style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: onlineColor[selectedChar.onlineStatus] || '#CCCCCC',
+                  }} />
+                  <span style={{ fontSize: 11, color: '#888' }}>{selectedChar.lastSeen}</span>
                 </div>
               </div>
               {isTyping && (
@@ -417,22 +408,18 @@ export default function MessagesPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
-            <button onClick={() => showToast('语音通话功能开发中')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: 6, borderRadius: 4 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.42 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
+            <button onClick={() => showToast('语音通话功能开发中')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666', padding: 6, borderRadius: 4, display: 'flex', alignItems: 'center' }}>
+              <Phone size={20} />
             </button>
-            <button onClick={() => showToast('视频通话功能开发中')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: 6, borderRadius: 4 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
-              </svg>
+            <button onClick={() => showToast('视频通话功能开发中')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666', padding: 6, borderRadius: 4, display: 'flex', alignItems: 'center' }}>
+              <Video size={20} />
             </button>
             <div style={{ position: 'relative' }}>
               <button
                 onClick={e => { e.stopPropagation(); setShowMoreMenu(s => !s) }}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: '4px 8px', borderRadius: 4, fontSize: 18, letterSpacing: 1 }}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666', padding: 6, borderRadius: 4, display: 'flex', alignItems: 'center' }}
               >
-                ···
+                <MoreHorizontal size={20} />
               </button>
               {showMoreMenu && (
                 <div
@@ -490,7 +477,7 @@ export default function MessagesPage() {
 
             const isUser = msg.role === 'user'
             const prevMsg = currentMessages[i - 1]
-            const isFirstInGroup = !prevMsg || prevMsg.role !== msg.role || (prevMsg.role as string) === 'system_time'
+            const isFirstInGroup = !prevMsg || prevMsg.role !== msg.role || prevMsg.type === 'system_time'
 
             return (
               <div key={msg.id} style={{
@@ -508,7 +495,7 @@ export default function MessagesPage() {
                 <div style={{ maxWidth: '60%', display: 'flex', flexDirection: 'column', gap: 1 }}>
                   {!isUser && isFirstInGroup && (
                     <span style={{ fontSize: 11, color: '#AAAAAA', marginLeft: 2, marginBottom: 1 }}>
-                      {selectedChar.name}
+                      {selectedChar.remark || selectedChar.name}
                     </span>
                   )}
                   <div style={{
@@ -597,18 +584,18 @@ export default function MessagesPage() {
               display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
               boxShadow: '0 -4px 16px rgba(0,0,0,0.08)',
             }}>
-              {MORE_ACTIONS.map(action => (
+              {MORE_ACTIONS.map(({ Icon, label, stub }) => (
                 <button
-                  key={action.label}
-                  onClick={() => { showToast(action.stub); setShowMore(false) }}
+                  key={label}
+                  onClick={() => { showToast(stub); setShowMore(false) }}
                   style={{
                     background: '#F5F5F5', border: 'none', borderRadius: 12,
                     padding: '14px 8px', cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                   }}
                 >
-                  <span style={{ fontSize: 24 }}>{action.icon}</span>
-                  <span style={{ fontSize: 11, color: '#555' }}>{action.label}</span>
+                  <Icon size={28} color="#666" />
+                  <span style={{ fontSize: 11, color: '#555' }}>{label}</span>
                 </button>
               ))}
             </div>
@@ -619,12 +606,9 @@ export default function MessagesPage() {
             {/* Voice button */}
             <button
               onClick={() => showToast('语音消息功能开发中')}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: 4, flexShrink: 0 }}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666', padding: 4, flexShrink: 0, display: 'flex', alignItems: 'center' }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
+              <Mic size={22} />
             </button>
 
             {/* Text input */}
@@ -649,49 +633,46 @@ export default function MessagesPage() {
               onClick={() => { setShowEmoji(s => !s); setShowMore(false) }}
               style={{
                 border: 'none', background: 'none', cursor: 'pointer',
-                fontSize: 22, padding: 2, flexShrink: 0,
-                opacity: showEmoji ? 1 : 0.65,
+                color: showEmoji ? '#07C160' : '#666',
+                padding: 4, flexShrink: 0, display: 'flex', alignItems: 'center',
               }}
             >
-              😊
+              <Smile size={22} />
             </button>
 
             {/* Image */}
             <button
               onClick={() => showToast('图片发送功能开发中')}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: 4, flexShrink: 0 }}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666', padding: 4, flexShrink: 0, display: 'flex', alignItems: 'center' }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
+              <Image size={20} />
             </button>
 
-            {/* Plus / More */}
-            <button
-              onClick={() => { setShowMore(s => !s); setShowEmoji(false) }}
-              style={{
-                border: 'none', background: 'none', cursor: 'pointer', color: '#888', padding: 4, flexShrink: 0,
-                opacity: showMore ? 1 : 0.65,
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="22" height="22">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-              </svg>
-            </button>
-
-            {/* Send button (only when input has text) */}
-            {input.trim() && (
+            {/* Plus / Send */}
+            {input.trim() ? (
               <button
                 onClick={sendMessage}
                 style={{
                   background: '#07C160', color: '#fff',
-                  border: 'none', borderRadius: 8, padding: '7px 16px',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
-                  height: 34, transition: 'background 0.15s',
+                  border: 'none', borderRadius: '50%',
+                  width: 34, height: 34,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', flexShrink: 0,
+                  transition: 'background 0.15s',
                 }}
               >
-                发送
+                <Send size={16} />
+              </button>
+            ) : (
+              <button
+                onClick={() => { setShowMore(s => !s); setShowEmoji(false) }}
+                style={{
+                  border: 'none', background: 'none', cursor: 'pointer',
+                  color: showMore ? '#07C160' : '#666',
+                  padding: 4, flexShrink: 0, display: 'flex', alignItems: 'center',
+                }}
+              >
+                <Plus size={22} />
               </button>
             )}
           </div>

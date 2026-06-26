@@ -1,24 +1,15 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  Search, MessageCircle, Phone, Video, Star, Tag,
+  FileText, Users, Pin, BellOff, Trash2, ChevronRight,
+  MapPin, Clock, Hash,
+} from 'lucide-react'
 import { CharacterAvatar } from '@/components/ui/CharacterAvatar'
 import { useToast } from '@/components/ui/Toast'
-import { mockCharacters, type Character } from '@/lib/mockData'
-
-const RELATIONSHIP_OPTIONS = ['好友', '挚友', '恋人', '家人', '暗恋', '竞争对手', '陌生人']
-
-const relationshipColors: Record<string, string> = {
-  '挚友': '#EC4899',
-  '好友': '#6B9EFF',
-  '普通朋友': '#AAAAAA',
-  '暧昧': '#FFB347',
-  '恋人': '#FF6B6B',
-  '家人': '#4ADE80',
-  '暗恋': '#F472B6',
-  '竞争对手': '#F87171',
-  '陌生人': '#9CA3AF',
-}
+import { mockCharacters, mockMoments, characterNameMap, type MockCharacter } from '@/lib/mockData'
 
 const characterColors: Record<string, string> = {
   '1': '#7C3AED',
@@ -27,12 +18,41 @@ const characterColors: Record<string, string> = {
   '4': '#374151',
 }
 
-const navRows = [
-  { label: '查看动态', badge: '12篇' },
-  { label: '查看记忆', badge: '8条记忆' },
-  { label: '设置人设', badge: '' },
-  { label: '设置语音', badge: '' },
-]
+const onlineDotColor: Record<string, string> = {
+  online: '#07C160',
+  recent: '#FFB347',
+  offline: '#CCCCCC',
+}
+
+const onlineLabel: Record<string, string> = {
+  online: '在线',
+  recent: '最近在线',
+  offline: '离线',
+}
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div
+      onClick={() => onChange(!value)}
+      style={{
+        width: 40, height: 24, borderRadius: 12,
+        background: value ? '#07C160' : '#D1D5DB',
+        cursor: 'pointer',
+        display: 'flex', alignItems: 'center',
+        padding: '0 3px',
+        transition: 'background 0.2s',
+        flexShrink: 0,
+      }}
+    >
+      <div style={{
+        width: 18, height: 18, background: '#fff', borderRadius: '50%',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        transform: value ? 'translateX(16px)' : 'translateX(0)',
+        transition: 'transform 0.2s',
+      }} />
+    </div>
+  )
+}
 
 export default function ContactsPage() {
   const router = useRouter()
@@ -43,21 +63,16 @@ export default function ContactsPage() {
   )
   const [editingRemark, setEditingRemark] = useState<string | null>(null)
   const [remarkDraft, setRemarkDraft] = useState('')
-  const [relationships, setRelationships] = useState<Record<string, string>>(
-    Object.fromEntries(mockCharacters.map(c => [c.id, c.relationship]))
-  )
-  const [tags, setTags] = useState<Record<string, string[]>>(
-    Object.fromEntries(mockCharacters.map(c => [c.id, [...c.traits]]))
-  )
-  const [newTag, setNewTag] = useState('')
-  const [addingTag, setAddingTag] = useState<string | null>(null)
+  const [pinnedIds, setPinnedIds] = useState<string[]>(mockCharacters.filter(c => c.isPinned).map(c => c.id))
+  const [mutedIds, setMutedIds] = useState<string[]>(mockCharacters.filter(c => c.isMuted).map(c => c.id))
+  const [showRemarkPanel, setShowRemarkPanel] = useState(false)
   const { showToast, ToastContainer } = useToast()
 
-  const groups = ['特别关注', '好友', '神秘']
+  const groups = Array.from(new Set(mockCharacters.map(c => c.group)))
   const filteredChars = mockCharacters.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (remarks[c.id] || '').includes(search) ||
-    c.status.includes(search)
+    c.signature.includes(search)
   )
 
   const selectedContact = selectedId ? mockCharacters.find(c => c.id === selectedId) : null
@@ -73,19 +88,37 @@ export default function ContactsPage() {
     setEditingRemark(null)
   }
 
-  function removeTag(charId: string, tag: string) {
-    setTags(prev => ({ ...prev, [charId]: prev[charId].filter(t => t !== tag) }))
+  // Get 3 most recent moment images for this character
+  function getRecentMomentThumbs(charId: string): string[] {
+    return mockMoments
+      .filter(m => m.authorId === charId && m.hasImages && m.imageColors.length > 0)
+      .slice(0, 3)
+      .map(m => m.imageColors[0])
   }
 
-  function addTag(charId: string) {
-    if (!newTag.trim()) return
-    setTags(prev => ({ ...prev, [charId]: [...(prev[charId] || []), newTag.trim()] }))
-    setNewTag('')
-    setAddingTag(null)
+  const isPinned = selectedId ? pinnedIds.includes(selectedId) : false
+  const isMuted = selectedId ? mutedIds.includes(selectedId) : false
+
+  function togglePin(id: string) {
+    setPinnedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
+  function toggleMute(id: string) {
+    setMutedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const navActions = [
+    { label: '设为特别关心', Icon: Star },
+    { label: '设置备注与标签', Icon: Tag, action: () => setShowRemarkPanel(true) },
+    { label: '查找聊天记录', Icon: Search },
+    { label: '查看共同好友', Icon: Users },
+  ]
+
+  const bottomActions = [
+    { label: '查看朋友圈', Icon: FileText },
+  ]
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }} onClick={() => setAddingTag(null)}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <ToastContainer />
 
       {/* ─── Left list ─── */}
@@ -102,9 +135,7 @@ export default function ContactsPage() {
             background: '#E8E8E8', borderRadius: 6,
             display: 'flex', alignItems: 'center', padding: '6px 10px', gap: 6,
           }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" strokeWidth="2" width="13" height="13">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
+            <Search size={13} color="#AAAAAA" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -120,7 +151,6 @@ export default function ContactsPage() {
             if (contacts.length === 0) return null
             return (
               <div key={group}>
-                {/* Group header */}
                 <div style={{
                   background: '#EBEBEB', padding: '5px 12px',
                   fontSize: 12, color: '#888888', fontWeight: 500,
@@ -135,23 +165,33 @@ export default function ContactsPage() {
                   return (
                     <div
                       key={contact.id}
-                      onClick={() => setSelectedId(contact.id)}
+                      onClick={() => { setSelectedId(contact.id); setShowRemarkPanel(false) }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '8px 12px',
                         cursor: 'pointer',
                         background: active ? '#E8E8E8' : 'transparent',
-                        height: 52,
+                        height: 56,
                         transition: 'background 0.1s',
                       }}
                       onMouseEnter={e => { if (!active) (e.currentTarget as HTMLDivElement).style.background = '#F0F0F0' }}
                       onMouseLeave={e => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
                     >
-                      <CharacterAvatar avatarId={contact.avatarId} size={36} />
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <CharacterAvatar avatarId={contact.avatarId} size={36} />
+                        <div style={{
+                          position: 'absolute', bottom: 0, right: 0,
+                          width: 9, height: 9, borderRadius: '50%',
+                          background: onlineDotColor[contact.onlineStatus] || '#CCC',
+                          border: '1.5px solid #F5F5F5',
+                        }} />
+                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>{contact.name}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>
+                          {remarks[contact.id] || contact.name}
+                        </div>
                         <div style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {contact.status}
+                          {contact.signature}
                         </div>
                       </div>
                     </div>
@@ -170,271 +210,299 @@ export default function ContactsPage() {
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
               }}
             >
-              <span>+</span> 添加新伙伴
+              + 添加新伙伴
             </button>
           </div>
         </div>
       </div>
 
       {/* ─── Right panel ─── */}
-      <div style={{ flex: 1, background: '#F5F5F5', overflowY: 'auto' }}>
+      <div style={{ flex: 1, background: '#F0F0F0', overflowY: 'auto' }}>
         {!selectedContact ? (
           <div style={{
             height: '100%', display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
             color: '#AAAAAA', gap: 12,
           }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#CCCCCC" strokeWidth="1.5" width="56" height="56">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
+            <Users size={56} color="#CCCCCC" />
             <span style={{ fontSize: 14 }}>选择联系人查看详情</span>
           </div>
         ) : (
-          <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 0 40px' }}>
-            {/* Top card */}
-            <div style={{ background: '#FFFFFF', marginBottom: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div style={{ maxWidth: 520, margin: '0 auto', paddingBottom: 60 }}>
+
+            {/* ── Cover + avatar ── */}
+            <div style={{
+              background: '#FFFFFF',
+              marginBottom: 8,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}>
               {/* Cover gradient */}
               <div style={{
-                height: 80,
+                height: 120,
                 background: `linear-gradient(135deg, ${charColor}CC, ${charColor}44)`,
-              }} />
-              {/* Avatar + info centered */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 20px 20px', position: 'relative', marginTop: -28 }}>
-                <div style={{ border: '3px solid #fff', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                  <CharacterAvatar avatarId={selectedContact.avatarId} size={56} />
+                position: 'relative',
+              }}>
+                {/* Avatar in bottom-right */}
+                <div style={{
+                  position: 'absolute', bottom: -36, right: 20,
+                  border: '3px solid #fff', borderRadius: '50%',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                }}>
+                  <CharacterAvatar avatarId={selectedContact.avatarId} size={72} />
                 </div>
-                <div style={{ marginTop: 10, fontWeight: 700, fontSize: 18, color: '#1A1A1A' }}>
-                  {selectedContact.name}
+              </div>
+
+              {/* Name + meta */}
+              <div style={{ padding: '12px 20px 16px', paddingTop: 16 }}>
+                <div style={{ marginBottom: 20 /* space for floating avatar */ }}>
+                  <div style={{ paddingRight: 100 }}>
+                    <div style={{ fontWeight: 700, fontSize: 20, color: '#1A1A1A', lineHeight: 1.2 }}>
+                      {selectedContact.name}
+                    </div>
+                    {remarks[selectedContact.id] && (
+                      <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
+                        备注：{remarks[selectedContact.id]}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: '#AAAAAA', marginTop: 2 }}>
+                      {selectedContact.accountId}
+                    </div>
+                  </div>
                 </div>
-                {remarks[selectedContact.id] && (
-                  <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
-                    ({remarks[selectedContact.id]})
+
+                {/* Signature */}
+                {selectedContact.signature && (
+                  <div style={{ fontSize: 13, color: '#888', fontStyle: 'italic', marginBottom: 8 }}>
+                    &ldquo;{selectedContact.signature}&rdquo;
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                  <span style={{
-                    fontSize: 11, color: relationshipColors[relationships[selectedContact.id]] || '#888',
-                    border: `1px solid ${relationshipColors[relationships[selectedContact.id]] || '#888'}`,
-                    borderRadius: 10, padding: '1px 8px',
-                  }}>
-                    {relationships[selectedContact.id]}
+
+                {/* Online status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: onlineDotColor[selectedContact.onlineStatus] || '#CCC',
+                  }} />
+                  <span style={{ fontSize: 12, color: '#888' }}>
+                    {onlineLabel[selectedContact.onlineStatus]} · {selectedContact.lastSeen}
                   </span>
-                  <span style={{ fontSize: 12, color: '#888' }}>亲密度 {selectedContact.intimacy}/100</span>
-                  {selectedContact.intimacyChange > 0 && (
-                    <span style={{ fontSize: 11, color: '#07C160', background: '#E6F9F0', borderRadius: 8, padding: '1px 6px' }}>
-                      +{selectedContact.intimacyChange}
-                    </span>
-                  )}
                 </div>
-                {/* Intimacy bar */}
-                <div style={{ width: '100%', maxWidth: 280, marginTop: 8 }}>
-                  <div style={{ height: 4, background: '#F0F0F0', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', width: `${selectedContact.intimacy}%`,
-                      background: `linear-gradient(90deg, ${charColor}99, ${charColor})`,
-                      borderRadius: 2, transition: 'width 0.6s ease',
+              </div>
+
+              {/* 朋友圈 row */}
+              <div style={{
+                borderTop: '1px solid #F0F0F0', borderBottom: '1px solid #F0F0F0',
+                padding: '10px 20px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                cursor: 'pointer',
+              }}
+                onClick={() => showToast('查看朋友圈功能开发中')}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#FAFAFA' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+              >
+                <span style={{ fontSize: 14, color: '#1A1A1A' }}>朋友圈</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* 3 moment thumbnails */}
+                  {getRecentMomentThumbs(selectedContact.id).map((color, i) => (
+                    <div key={i} style={{
+                      width: 48, height: 48, borderRadius: 4,
+                      background: color,
+                      flexShrink: 0,
                     }} />
-                  </div>
+                  ))}
+                  <ChevronRight size={16} color="#CCCCCC" />
                 </div>
+              </div>
+
+              {/* Info rows */}
+              <div style={{ padding: '8px 0' }}>
+                {[
+                  { label: '地区', value: selectedContact.region },
+                  { label: '来源', value: '通过星尘关系网认识' },
+                  { label: '共同回忆', value: `认识${selectedContact.daysSinceMet}天，聊过${selectedContact.totalMessages}条消息` },
+                ].map(row => (
+                  <div key={row.label} style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    padding: '8px 20px', fontSize: 13,
+                  }}>
+                    <span style={{ color: '#888' }}>{row.label}</span>
+                    <span style={{ color: '#1A1A1A' }}>{row.value}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 10, padding: '0 20px 20px', justifyContent: 'center' }}>
-                {[
-                  { label: '💬 发消息', isGreen: true, action: () => router.push('/messages') },
-                  { label: '🎙 语音', isGreen: false, action: () => showToast('语音功能开发中') },
-                  { label: '📹 视频', isGreen: false, action: () => showToast('视频功能开发中') },
-                  { label: '⋯ 更多', isGreen: false, action: () => showToast('更多功能开发中') },
-                ].map(btn => (
-                  <button
-                    key={btn.label}
-                    onClick={btn.action}
-                    style={{
-                      flex: 1, borderRadius: 10, padding: '9px 4px',
-                      background: btn.isGreen ? '#07C160' : '#F0F0F0',
-                      color: btn.isGreen ? '#fff' : '#555',
-                      border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-                      transition: 'opacity 0.15s',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Info section */}
-            <div style={{
-              background: '#FFFFFF', margin: '0 0 8px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-              borderRadius: 0,
-            }}>
-              {/* 备注 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60 }}>备注</span>
-                {editingRemark === selectedContact.id ? (
-                  <div style={{ flex: 1, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <input
-                      autoFocus
-                      value={remarkDraft}
-                      onChange={e => setRemarkDraft(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') saveRemark(selectedContact.id) }}
-                      style={{ border: '1px solid #E5E5E5', borderRadius: 6, padding: '3px 8px', fontSize: 14, outline: 'none', background: '#FAFAFA' }}
-                    />
-                    <button onClick={() => saveRemark(selectedContact.id)} style={{ background: '#07C160', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer' }}>保存</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 14, color: remarks[selectedContact.id] ? '#1A1A1A' : '#CCCCCC' }}>
-                      {remarks[selectedContact.id] || '添加备注'}
-                    </span>
-                    <button onClick={() => startEditRemark(selectedContact.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', padding: 2 }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 关系 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60 }}>关系</span>
-                <select
-                  value={relationships[selectedContact.id]}
-                  onChange={e => setRelationships(prev => ({ ...prev, [selectedContact.id]: e.target.value }))}
-                  style={{ border: 'none', outline: 'none', fontSize: 14, color: '#1A1A1A', background: 'transparent', cursor: 'pointer', textAlign: 'right' }}
+              <div style={{ display: 'flex', gap: 10, padding: '0 20px 20px' }}>
+                <button
+                  onClick={() => router.push('/messages')}
+                  style={{
+                    flex: 1, background: '#07C160', color: '#fff',
+                    border: 'none', borderRadius: 10, padding: '10px',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  }}
                 >
-                  {RELATIONSHIP_OPTIONS.map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 亲密度 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60 }}>亲密度</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 120, height: 4, background: '#F0F0F0', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', width: `${selectedContact.intimacy}%`,
-                      background: charColor, borderRadius: 2,
-                    }} />
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#1A1A1A' }}>{selectedContact.intimacy}</span>
-                  {selectedContact.intimacyChange > 0 && (
-                    <span style={{ fontSize: 11, color: '#07C160', background: '#E6F9F0', borderRadius: 8, padding: '1px 6px' }}>
-                      ↑{selectedContact.intimacyChange}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 分组 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60 }}>分组</span>
-                <span style={{ fontSize: 14, color: '#1A1A1A' }}>{selectedContact.group}</span>
-              </div>
-
-              {/* 标签 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 20px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60, paddingTop: 2 }}>标签</span>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }} onClick={e => e.stopPropagation()}>
-                  {(tags[selectedContact.id] || []).map(tag => (
-                    <span
-                      key={tag}
-                      style={{
-                        background: '#F0F0F0', borderRadius: 12, padding: '2px 10px',
-                        fontSize: 12, color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                      }}
-                    >
-                      {tag}
-                      <span onClick={() => removeTag(selectedContact.id, tag)} style={{ color: '#BBB', fontSize: 10, cursor: 'pointer' }}>✕</span>
-                    </span>
-                  ))}
-                  {addingTag === selectedContact.id ? (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <input
-                        autoFocus
-                        value={newTag}
-                        onChange={e => setNewTag(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') addTag(selectedContact.id) }}
-                        style={{ border: '1px solid #E5E5E5', borderRadius: 10, padding: '2px 8px', fontSize: 12, outline: 'none', width: 80 }}
-                        placeholder="标签名"
-                      />
-                      <button onClick={() => addTag(selectedContact.id)} style={{ background: '#07C160', color: '#fff', border: 'none', borderRadius: 8, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}>+</button>
-                    </div>
-                  ) : (
-                    <span
-                      onClick={() => setAddingTag(selectedContact.id)}
-                      style={{ background: 'none', border: '1px dashed #CCC', borderRadius: 12, padding: '2px 10px', fontSize: 12, color: '#BBB', cursor: 'pointer' }}
-                    >
-                      + 添加
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 心情 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60 }}>心情</span>
-                <span style={{ fontSize: 14, color: '#1A1A1A' }}>{selectedContact.mood}</span>
-              </div>
-
-              {/* 人设 */}
-              <div style={{ padding: '12px 20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 13, color: '#888', flexShrink: 0, width: 60 }}>人设</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 14, color: '#1A1A1A', lineHeight: 1.6, margin: 0, textAlign: 'right' }}>
-                      {selectedContact.bio}
-                    </p>
-                    <button
-                      onClick={() => showToast('查看全部功能开发中')}
-                      style={{ background: 'none', border: 'none', color: '#07C160', fontSize: 12, cursor: 'pointer', padding: '4px 0 0', float: 'right' }}
-                    >
-                      查看全部
-                    </button>
-                  </div>
-                </div>
+                  <MessageCircle size={16} /> 发消息
+                </button>
+                <button
+                  onClick={() => showToast('语音功能开发中')}
+                  style={{
+                    flex: 1, background: '#F0F0F0', color: '#555',
+                    border: 'none', borderRadius: 10, padding: '10px',
+                    fontSize: 13, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  }}
+                >
+                  <Phone size={16} /> 音频通话
+                </button>
+                <button
+                  onClick={() => showToast('视频功能开发中')}
+                  style={{
+                    flex: 1, background: '#F0F0F0', color: '#555',
+                    border: 'none', borderRadius: 10, padding: '10px',
+                    fontSize: 13, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  }}
+                >
+                  <Video size={16} /> 视频通话
+                </button>
               </div>
             </div>
 
-            {/* Navigation rows */}
-            <div style={{ background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              {navRows.map((item, i) => (
+            {/* ── Nav actions ── */}
+            <div style={{ background: '#FFFFFF', marginBottom: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              {navActions.map((item, i) => (
                 <button
                   key={item.label}
-                  onClick={() => showToast(`${item.label}功能开发中`)}
+                  onClick={() => item.action ? item.action() : showToast(`${item.label}功能开发中`)}
                   style={{
                     width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '14px 20px', background: 'none', border: 'none',
-                    borderBottom: i < navRows.length - 1 ? '1px solid #F0F0F0' : 'none',
+                    borderBottom: i < navActions.length - 1 ? '1px solid #F0F0F0' : 'none',
                     cursor: 'pointer', fontSize: 14, color: '#1A1A1A', textAlign: 'left',
-                    transition: 'background 0.1s',
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F8F8F8' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
                 >
                   <span>{item.label}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {item.badge && (
-                      <span style={{ fontSize: 12, color: '#888', background: '#F0F0F0', borderRadius: 10, padding: '1px 8px' }}>
-                        {item.badge}
-                      </span>
-                    )}
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#CCCCCC" strokeWidth="2" width="14" height="14">
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                  </div>
+                  <ChevronRight size={16} color="#CCCCCC" />
                 </button>
               ))}
+            </div>
+
+            {/* 备注与标签 inline panel */}
+            {showRemarkPanel && (
+              <div style={{ background: '#FFFFFF', marginBottom: 8, padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>备注与标签</div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>备注名</div>
+                  {editingRemark === selectedContact.id ? (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        autoFocus
+                        value={remarkDraft}
+                        onChange={e => setRemarkDraft(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveRemark(selectedContact.id) }}
+                        style={{
+                          flex: 1, border: '1px solid #E5E5E5', borderRadius: 6,
+                          padding: '6px 10px', fontSize: 14, outline: 'none',
+                        }}
+                      />
+                      <button onClick={() => saveRemark(selectedContact.id)}
+                        style={{ background: '#07C160', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>
+                        保存
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14, color: remarks[selectedContact.id] ? '#1A1A1A' : '#CCCCCC' }}>
+                        {remarks[selectedContact.id] || '添加备注'}
+                      </span>
+                      <button onClick={() => startEditRemark(selectedContact.id)}
+                        style={{ background: '#F0F0F0', border: 'none', borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer', color: '#666' }}>
+                        编辑
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>标签</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {['朋友', '有趣', '夜猫子'].map(tag => (
+                    <span key={tag} style={{
+                      background: '#F0F0F0', borderRadius: 12, padding: '3px 12px',
+                      fontSize: 12, color: '#555',
+                    }}>
+                      {tag}
+                    </span>
+                  ))}
+                  <span style={{ background: 'none', border: '1px dashed #CCC', borderRadius: 12, padding: '3px 12px', fontSize: 12, color: '#BBB', cursor: 'pointer' }}
+                    onClick={() => showToast('标签编辑功能开发中')}>
+                    + 添加
+                  </span>
+                </div>
+                <button onClick={() => setShowRemarkPanel(false)}
+                  style={{ marginTop: 12, background: 'none', border: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}>
+                  收起
+                </button>
+              </div>
+            )}
+
+            {/* ── Bottom toggles ── */}
+            <div style={{ background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              {/* 查看朋友圈 */}
+              <button
+                onClick={() => showToast('查看朋友圈功能开发中')}
+                style={{
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '14px 20px', background: 'none', border: 'none',
+                  borderBottom: '1px solid #F0F0F0',
+                  cursor: 'pointer', fontSize: 14, color: '#1A1A1A', textAlign: 'left',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F8F8F8' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+              >
+                <span>查看朋友圈</span>
+                <ChevronRight size={16} color="#CCCCCC" />
+              </button>
+
+              {/* 置顶聊天 */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '14px 20px', borderBottom: '1px solid #F0F0F0',
+              }}>
+                <span style={{ fontSize: 14, color: '#1A1A1A' }}>置顶聊天</span>
+                <Toggle
+                  value={isPinned}
+                  onChange={() => togglePin(selectedContact.id)}
+                />
+              </div>
+
+              {/* 消息免打扰 */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '14px 20px', borderBottom: '1px solid #F0F0F0',
+              }}>
+                <span style={{ fontSize: 14, color: '#1A1A1A' }}>消息免打扰</span>
+                <Toggle
+                  value={isMuted}
+                  onChange={() => toggleMute(selectedContact.id)}
+                />
+              </div>
+
+              {/* 清空聊天记录 */}
+              <button
+                onClick={() => showToast('清空聊天记录功能开发中')}
+                style={{
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '14px 20px', background: 'none', border: 'none',
+                  cursor: 'pointer', fontSize: 14, color: '#FF4444', textAlign: 'left',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#FEF2F2' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+              >
+                <span>清空聊天记录</span>
+                <ChevronRight size={16} color="#FFAAAA" />
+              </button>
             </div>
           </div>
         )}

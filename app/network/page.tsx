@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { X, MessageCircle } from 'lucide-react'
 import { CharacterAvatar } from '@/components/ui/CharacterAvatar'
 import { useToast } from '@/components/ui/Toast'
-import { mockCharacters } from '@/lib/mockData'
+import { mockCharacters, characterNameMap } from '@/lib/mockData'
 
 interface NodeDef {
   id: string
@@ -19,15 +20,8 @@ interface EdgeDef {
   from: string
   to: string
   relation: string
-  intimacy: number
   color: string
-  weekChange: number
-}
-
-interface RelationLog {
-  date: string
-  desc: string
-  delta: number
+  strength: number // 0-1, controls line thickness
 }
 
 const nodes: NodeDef[] = [
@@ -39,36 +33,40 @@ const nodes: NodeDef[] = [
 ]
 
 const edges: EdgeDef[] = [
-  { from: 'user', to: '1', relation: '挚友', intimacy: 82, color: '#FF8DB4', weekChange: 3 },
-  { from: 'user', to: '2', relation: '好友', intimacy: 71, color: '#6B9EFF', weekChange: 1 },
-  { from: 'user', to: '3', relation: '挚友', intimacy: 90, color: '#FF8DB4', weekChange: 5 },
-  { from: 'user', to: '4', relation: '普通朋友', intimacy: 54, color: '#AAAAAA', weekChange: 0 },
-  { from: '1', to: '3', relation: '好友', intimacy: 80, color: '#6B9EFF', weekChange: 0 },
-  { from: '3', to: '4', relation: '暧昧', intimacy: 65, color: '#FFB347', weekChange: 2 },
-  { from: '2', to: '1', relation: '好友', intimacy: 55, color: '#6B9EFF', weekChange: 0 },
+  { from: 'user', to: '1', relation: '挚友', color: '#FF8DB4', strength: 0.82 },
+  { from: 'user', to: '2', relation: '好友', color: '#6B9EFF', strength: 0.71 },
+  { from: 'user', to: '3', relation: '挚友', color: '#FF8DB4', strength: 0.90 },
+  { from: 'user', to: '4', relation: '普通朋友', color: '#AAAAAA', strength: 0.54 },
+  { from: '1', to: '3', relation: '好友', color: '#6B9EFF', strength: 0.80 },
+  { from: '3', to: '4', relation: '朋友', color: '#FFB347', strength: 0.65 },
+  { from: '2', to: '1', relation: '好友', color: '#6B9EFF', strength: 0.55 },
 ]
 
 const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]))
 
-const mockRelationLogs: Record<string, RelationLog[]> = {
-  '1': [
-    { date: '今天', desc: '聊了1小时，亲密度上升', delta: 2 },
-    { date: '昨天', desc: 'Luna 分享了一首诗', delta: 3 },
-    { date: '周一', desc: '互发动态评论', delta: 1 },
-  ],
-  '2': [
-    { date: '今天', desc: 'Kai 发来游戏截图', delta: 1 },
-    { date: '3天前', desc: '一起讨论游戏攻略', delta: 2 },
-  ],
-  '3': [
-    { date: '今天', desc: 'Aria 关心你的近况', delta: 3 },
-    { date: '昨天', desc: '分享了彼此的感受', delta: 2 },
-    { date: '上周', desc: '第一次语音通话', delta: 5 },
-  ],
-  '4': [
-    { date: '周二', desc: 'Nox 发来一句诗', delta: 0 },
-  ],
+// Simple recent interaction labels (no intimacy numbers)
+const recentInteraction: Record<string, string> = {
+  '1': '3天前 聊了天',
+  '2': '今天 发来截图',
+  '3': '今天 早上打招呼',
+  '4': '周二 发了条消息',
 }
+
+const onlineDotColor: Record<string, string> = {
+  '1': '#07C160',
+  '2': '#07C160',
+  '3': '#07C160',
+  '4': '#AAAAAA',
+}
+
+const charRegion: Record<string, string> = {
+  '1': '杭州',
+  '2': '成都',
+  '3': '北京',
+  '4': '未知',
+}
+
+const RELATION_OPTIONS = ['好友', '挚友', '普通朋友', '朋友', '家人']
 
 type PanelMode = 'node' | 'edge' | null
 
@@ -80,7 +78,6 @@ export default function NetworkPage() {
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null)
   const [panelMode, setPanelMode] = useState<PanelMode>(null)
   const [edgeRelations, setEdgeRelations] = useState<string[]>(edges.map(e => e.relation))
-  const [edgeNotes, setEdgeNotes] = useState<Record<number, string>>({})
   const { showToast, ToastContainer } = useToast()
 
   function openNode(nodeId: string) {
@@ -109,12 +106,9 @@ export default function NetworkPage() {
     : null
   const otherChar = otherNodeId ? mockCharacters.find(c => c.id === otherNodeId) : null
 
-  const RELATION_OPTIONS = ['好友', '挚友', '普通朋友', '暧昧', '恋人', '家人']
-
   function getBezierPath(from: NodeDef, to: NodeDef) {
     const mx = (from.x + to.x) / 2
     const my = (from.y + to.y) / 2
-    // offset control point perpendicular
     const dx = to.x - from.x
     const dy = to.y - from.y
     const len = Math.sqrt(dx * dx + dy * dy)
@@ -142,7 +136,7 @@ export default function NetworkPage() {
         }}>
           <span style={{ fontWeight: 700, fontSize: 16, color: '#1A1A1A' }}>关系网</span>
           <div style={{ display: 'flex', gap: 6 }}>
-            {['全部', '好友', '暧昧', '挚友'].map((f, i) => (
+            {['全部', '好友', '挚友', '普通朋友'].map((f, i) => (
               <button key={f} style={{
                 border: i === 0 ? '1px solid #07C160' : '1px solid #D5CFC8',
                 background: i === 0 ? 'rgba(7,193,96,0.1)' : 'transparent',
@@ -166,13 +160,12 @@ export default function NetworkPage() {
             const from = nodeMap[edge.from]
             const to = nodeMap[edge.to]
             const { path, cx, cy } = getBezierPath(from, to)
-            const strokeW = 1.5 + (edge.intimacy / 100) * 3
+            const strokeW = 1.5 + edge.strength * 3
             const isHovered = hoveredEdge === i
             const isSelected = selectedEdgeIdx === i
 
             return (
               <g key={i}>
-                {/* Hover hit area */}
                 <path
                   d={path}
                   stroke="transparent"
@@ -192,34 +185,16 @@ export default function NetworkPage() {
                   strokeLinecap="round"
                   style={{ transition: 'stroke-opacity 0.2s, stroke-width 0.2s', pointerEvents: 'none' }}
                 />
-                {/* Label at curve midpoint */}
                 {(isHovered || isSelected) && (
                   <g style={{ pointerEvents: 'none' }}>
-                    <rect
-                      x={cx - 20} y={cy - 10} width={40} height={18}
-                      rx={6} fill="rgba(255,255,255,0.92)"
-                    />
-                    <text
-                      x={cx} y={cy + 4}
-                      textAnchor="middle"
-                      fontSize="10"
-                      fill={edge.color}
-                      fontWeight="600"
-                    >
+                    <rect x={cx - 22} y={cy - 10} width={44} height={18} rx={6} fill="rgba(255,255,255,0.92)" />
+                    <text x={cx} y={cy + 4} textAnchor="middle" fontSize="10" fill={edge.color} fontWeight="600">
                       {edgeRelations[i] || edge.relation}
                     </text>
                   </g>
                 )}
-                {/* Always-visible small label */}
                 {!isHovered && !isSelected && (
-                  <text
-                    x={cx} y={cy}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill={edge.color}
-                    opacity="0.6"
-                    style={{ pointerEvents: 'none' }}
-                  >
+                  <text x={cx} y={cy} textAnchor="middle" fontSize="9" fill={edge.color} opacity="0.6" style={{ pointerEvents: 'none' }}>
                     {edgeRelations[i] || edge.relation}
                   </text>
                 )}
@@ -243,27 +218,18 @@ export default function NetworkPage() {
                 onMouseLeave={() => setHoveredNode(null)}
                 style={{ cursor: node.isUser ? 'default' : 'pointer', transition: 'transform 0.15s' }}
               >
-                {/* Selection ring */}
                 {isSelected && !node.isUser && (
                   <circle r={r + 7} fill="none" stroke="#07C160" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.6" />
                 )}
-
-                {/* Shadow */}
                 <circle r={r} cx={1} cy={2} fill="rgba(0,0,0,0.08)" />
-
-                {/* White bg */}
                 <circle r={r} fill="#FFFFFF" stroke={node.isUser ? '#07C160' : '#E5E5E5'} strokeWidth={node.isUser ? 2.5 : 1.5} />
-
-                {/* Green ring for user */}
                 {node.isUser && <circle r={r + 4} fill="none" stroke="#07C160" strokeWidth="1" opacity="0.3" />}
 
-                {/* Avatar content */}
                 {node.isUser ? (
                   <text textAnchor="middle" dominantBaseline="middle" fontSize="13" fontWeight="700" fill="#1A1A1A">
                     我
                   </text>
                 ) : (
-                  // Use foreignObject to embed CharacterAvatar SVG scaled to fit
                   <foreignObject x={-r} y={-r} width={r * 2} height={r * 2} style={{ overflow: 'visible', clipPath: `circle(${r}px)` }}>
                     <div style={{ width: r * 2, height: r * 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <CharacterAvatar avatarId={node.avatarId!} size={r * 2} />
@@ -271,24 +237,16 @@ export default function NetworkPage() {
                   </foreignObject>
                 )}
 
-                {/* Online indicator dot */}
                 {!node.isUser && (
                   <circle
                     cx={r - 5} cy={r - 5}
                     r={4.5}
-                    fill={node.id === '4' ? '#AAAAAA' : '#07C160'}
+                    fill={onlineDotColor[node.id] || '#CCCCCC'}
                     stroke="#FFFFFF" strokeWidth="1.5"
                   />
                 )}
 
-                {/* Label below */}
-                <text
-                  y={r + 14}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fontWeight="600"
-                  fill="#333"
-                >
+                <text y={r + 14} textAnchor="middle" fontSize="11" fontWeight="600" fill="#333">
                   {node.label}
                 </text>
               </g>
@@ -308,7 +266,7 @@ export default function NetworkPage() {
           {[
             { label: '好友', color: '#6B9EFF' },
             { label: '挚友', color: '#FF8DB4' },
-            { label: '暧昧', color: '#FFB347' },
+            { label: '朋友', color: '#FFB347' },
             { label: '普通朋友', color: '#AAAAAA' },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -327,15 +285,15 @@ export default function NetworkPage() {
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
           boxShadow: '-2px 0 10px rgba(0,0,0,0.05)',
-          transform: 'translateX(0)',
-          transition: 'transform 0.2s ease',
         }}>
           {/* Close */}
           <div style={{
             display: 'flex', justifyContent: 'flex-end',
             padding: '12px 16px', borderBottom: '1px solid #F0F0F0',
           }}>
-            <button onClick={closePanel} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', fontSize: 18 }}>✕</button>
+            <button onClick={closePanel} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center' }}>
+              <X size={20} />
+            </button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
@@ -344,37 +302,24 @@ export default function NetworkPage() {
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
                   <CharacterAvatar avatarId={selectedChar.avatarId} size={64} />
-                  <div style={{ fontWeight: 700, fontSize: 18, color: '#1A1A1A', marginTop: 10 }}>{selectedChar.name}</div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{selectedChar.status}</div>
-                </div>
-
-                {/* Intimacy */}
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: '#888' }}>
-                    <span>亲密度</span>
-                    <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{selectedChar.intimacy}/100</span>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: '#1A1A1A', marginTop: 10 }}>
+                    {selectedChar.name}
                   </div>
-                  <div style={{ height: 6, background: '#F0F0F0', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', width: `${selectedChar.intimacy}%`,
-                      background: '#07C160', borderRadius: 3,
-                      transition: 'width 0.6s ease',
-                    }} />
-                  </div>
-                  {selectedChar.intimacyChange > 0 && (
-                    <div style={{ fontSize: 11, color: '#07C160', marginTop: 4 }}>
-                      本周 +{selectedChar.intimacyChange}
+                  {selectedChar.remark && (
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                      {selectedChar.remark}
                     </div>
                   )}
                 </div>
 
-                {/* Info rows */}
+                {/* Info rows — no intimacy bar */}
                 {[
-                  { label: '最近互动', value: selectedChar.lastSeen },
-                  { label: '关系', value: selectedChar.relationship },
+                  { label: '关系', value: edges.find(e => (e.from === 'user' && e.to === selectedChar.id) || (e.to === 'user' && e.from === selectedChar.id))?.relation || '好友' },
+                  { label: '地区', value: charRegion[selectedChar.id] || '未知' },
+                  { label: '认识时间', value: `${selectedChar.daysSinceMet}天` },
                   {
-                    label: '共同朋友',
-                    value: selectedChar.knowsCharacters.map(id => mockCharacters.find(c => c.id === id)?.name).filter(Boolean).join('、') || '暂无',
+                    label: '共同好友',
+                    value: selectedChar.knowsCharacters.map(id => characterNameMap[id] ?? id).filter(Boolean).join('、') || '暂无',
                   },
                 ].map(item => (
                   <div key={item.label} style={{
@@ -394,9 +339,10 @@ export default function NetworkPage() {
                       flex: 1, background: '#07C160', color: '#fff',
                       border: 'none', borderRadius: 10, padding: '10px',
                       fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                     }}
                   >
-                    发消息
+                    <MessageCircle size={15} /> 发消息
                   </button>
                   <button
                     onClick={() => router.push('/contacts')}
@@ -416,7 +362,7 @@ export default function NetworkPage() {
             {panelMode === 'edge' && selectedEdge && selectedEdgeIdx !== null && (
               <>
                 <div style={{ fontWeight: 600, fontSize: 15, color: '#1A1A1A', marginBottom: 16, textAlign: 'center' }}>
-                  我 ↔ {otherChar?.name || '?'} 的关系
+                  我 ↔ {otherChar?.name || '?'}
                 </div>
 
                 {/* Relation type */}
@@ -439,61 +385,19 @@ export default function NetworkPage() {
                   </select>
                 </div>
 
-                {/* Intimacy slider */}
+                {/* Recent interaction — replaces intimacy bar */}
                 <div style={{ marginBottom: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: '#888' }}>亲密度</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A' }}>{selectedEdge.intimacy}</span>
-                    {selectedEdge.weekChange > 0 && (
-                      <span style={{ fontSize: 11, color: '#07C160' }}>+{selectedEdge.weekChange} 本周</span>
-                    )}
-                  </div>
-                  <div style={{ height: 6, background: '#F0F0F0', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', width: `${selectedEdge.intimacy}%`,
-                      background: selectedEdge.color, borderRadius: 3,
-                    }} />
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>最近互动</div>
+                  <div style={{
+                    background: '#F5F5F5', borderRadius: 8,
+                    padding: '10px 14px', fontSize: 13, color: '#555',
+                  }}>
+                    {otherNodeId ? (recentInteraction[otherNodeId] || '暂无互动记录') : '—'}
                   </div>
                 </div>
 
-                {/* Notes */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>关系备注</div>
-                  <textarea
-                    value={edgeNotes[selectedEdgeIdx] || ''}
-                    onChange={e => setEdgeNotes(prev => ({ ...prev, [selectedEdgeIdx]: e.target.value }))}
-                    placeholder="记录一些关于这段关系的想法..."
-                    rows={2}
-                    style={{
-                      width: '100%', border: '1px solid #E5E5E5', borderRadius: 8,
-                      padding: '8px 10px', fontSize: 13, outline: 'none',
-                      resize: 'none', fontFamily: 'inherit', color: '#1A1A1A',
-                      background: '#FAFAFA', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                {/* Relation logs */}
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>关系日志</div>
-                  {(mockRelationLogs[otherNodeId || ''] || []).map((log, i) => (
-                    <div key={i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                      padding: '6px 0', borderBottom: '1px solid #F5F5F5', fontSize: 12,
-                    }}>
-                      <div>
-                        <span style={{ color: '#888', marginRight: 6 }}>· {log.date}</span>
-                        <span style={{ color: '#555' }}>{log.desc}</span>
-                      </div>
-                      {log.delta > 0 && (
-                        <span style={{ color: '#07C160', flexShrink: 0, marginLeft: 8 }}>+{log.delta}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Save / Delete */}
-                <div style={{ display: 'flex', gap: 10 }}>
+                {/* Save */}
+                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                   <button
                     onClick={() => { showToast('已保存'); closePanel() }}
                     style={{

@@ -1,80 +1,72 @@
 'use client'
 
 import { useState } from 'react'
+import { ThumbsUp, MessageSquare, PlusCircle, X, Image as ImageIcon } from 'lucide-react'
 import { CharacterAvatar } from '@/components/ui/CharacterAvatar'
 import { useToast } from '@/components/ui/Toast'
-import { mockCharacters, mockMoments, type MomentPost } from '@/lib/mockData'
+import {
+  mockMoments, characterNameMap, characterAvatarMap,
+  type MockMoment,
+} from '@/lib/mockData'
 
-const avatarIdByName: Record<string, number> = {
-  Luna: 1, Kai: 2, Aria: 3, Nox: 4,
-}
-const colorByName: Record<string, string> = {
-  Luna: '#7C3AED', Kai: '#0EA5E9', Aria: '#EC4899', Nox: '#374151',
+const characterColors: Record<string, string> = {
+  '1': '#7C3AED',
+  '2': '#0EA5E9',
+  '3': '#EC4899',
+  '4': '#374151',
 }
 
-function ImageGrid({ count, color }: { count: number; color: string }) {
+function ImageGrid({ imageColors }: { imageColors: string[] }) {
+  const count = imageColors.length
   if (count === 0) return null
+
   if (count === 1) {
     return (
-      <div style={{
-        width: 300, height: 200,
-        background: `linear-gradient(135deg, ${color}33, ${color}18)`,
-        borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 32, marginTop: 8,
-      }}>
-        🖼
-      </div>
+      <div
+        style={{
+          width: 200, height: 150, borderRadius: 6, marginTop: 8,
+          background: imageColors[0],
+          flexShrink: 0,
+        }}
+      />
     )
   }
   if (count === 2) {
     return (
-      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-        {[0,1].map(i => (
-          <div key={i} style={{
-            width: 150, height: 150,
-            background: `linear-gradient(135deg, ${color}${i === 0 ? '44' : '28'}, ${color}18)`,
-            borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
-          }}>🖼</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginTop: 8, width: 244 }}>
+        {imageColors.map((color, i) => (
+          <div key={i} style={{ width: 120, height: 120, borderRadius: 4, background: color }} />
         ))}
       </div>
     )
   }
   if (count === 3) {
     return (
-      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-        {[0,1,2].map(i => (
-          <div key={i} style={{
-            width: 100, height: 100,
-            background: `linear-gradient(135deg, ${color}40, ${color}18)`,
-            borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-          }}>🖼</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, marginTop: 8, width: 306 }}>
+        {imageColors.map((color, i) => (
+          <div key={i} style={{ width: 100, height: 100, borderRadius: 4, background: color }} />
         ))}
       </div>
     )
   }
-  // 4-9 grid
+  // 4+
+  const show = imageColors.slice(0, 9)
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: 'repeat(3, 90px)', gap: 4, marginTop: 8,
-    }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{
-          width: 90, height: 90,
-          background: `linear-gradient(135deg, ${color}44, ${color}22)`,
-          borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-        }}>🖼</div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, marginTop: 8, width: 276 }}>
+      {show.map((color, i) => (
+        <div key={i} style={{ width: 90, height: 90, borderRadius: 4, background: color }} />
       ))}
     </div>
   )
 }
 
 export default function MomentsPage() {
-  const [moments, setMoments] = useState<MomentPost[]>(mockMoments)
+  const [moments, setMoments] = useState<MockMoment[]>(mockMoments)
   const [likes, setLikes] = useState<Record<string, string[]>>(
     Object.fromEntries(mockMoments.map(m => [m.id, [...m.likes]]))
   )
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({})
-  const [comments, setComments] = useState<Record<string, { author: string; text: string }[]>>(
+  const [comments, setComments] = useState<Record<string, { authorId: string; content: string }[]>>(
     Object.fromEntries(mockMoments.map(m => [m.id, [...m.comments]]))
   )
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
@@ -86,27 +78,28 @@ export default function MomentsPage() {
   function toggleLike(id: string) {
     setLikes(prev => {
       const arr = prev[id] || []
-      const hasMe = arr.includes('我')
-      return { ...prev, [id]: hasMe ? arr.filter(x => x !== '我') : [...arr, '我'] }
+      const hasMe = arr.includes('user')
+      return { ...prev, [id]: hasMe ? arr.filter(x => x !== 'user') : [...arr, 'user'] }
     })
   }
 
   function submitComment(id: string) {
     const text = (commentInputs[id] || '').trim()
     if (!text) return
-    setComments(prev => ({ ...prev, [id]: [...(prev[id] || []), { author: '我', text }] }))
+    setComments(prev => ({ ...prev, [id]: [...(prev[id] || []), { authorId: 'user', content: text }] }))
     setCommentInputs(prev => ({ ...prev, [id]: '' }))
   }
 
   function submitPost() {
     if (!newPostText.trim()) return
-    const newMoment: MomentPost = {
+    const newMoment: MockMoment = {
       id: Date.now().toString(),
-      authorId: 'me',
-      authorName: '我',
+      authorId: 'user',
       content: newPostText.trim(),
-      time: '刚刚',
+      hasImages: false,
       imageCount: 0,
+      imageColors: [],
+      time: '刚刚',
       likes: [],
       comments: [],
     }
@@ -119,65 +112,74 @@ export default function MomentsPage() {
 
   const MAX_CONTENT_LEN = 120
 
+  function getLikerNames(likerIds: string[]): string {
+    return likerIds.map(id => characterNameMap[id] ?? id).join('、')
+  }
+
   return (
     <div style={{ height: '100vh', overflowY: 'auto', background: '#F5F5F5' }}>
       <ToastContainer />
 
-      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
         {/* Cover */}
         <div style={{
-          position: 'relative', height: 220,
-          background: 'linear-gradient(135deg, #7C3AED44 0%, #EC489944 50%, #0EA5E944 100%)',
-          overflow: 'hidden',
+          position: 'relative', height: 200,
+          background: 'linear-gradient(135deg, #B5D5C5 0%, #D4B8E0 100%)',
+          overflow: 'visible',
         }}>
-          {/* subtle pattern */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(124,58,237,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(14,165,233,0.15) 0%, transparent 50%)',
-          }} />
           {/* User avatar bottom-right */}
-          <div style={{ position: 'absolute', bottom: -20, right: 20 }}>
+          <div style={{ position: 'absolute', bottom: -28, right: 20 }}>
             <div style={{
-              width: 60, height: 60, borderRadius: 12,
+              width: 56, height: 56, borderRadius: 10,
               background: '#555', border: '3px solid #fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: 20,
+              color: '#fff', fontWeight: 700, fontSize: 18,
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             }}>
               我
             </div>
-          </div>
-          <div style={{ position: 'absolute', bottom: -20, left: 20 }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A' }}>我的朋友圈</span>
           </div>
         </div>
 
         {/* Action bar */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '36px 16px 12px',
+          padding: '36px 16px 16px',
         }}>
-          <div style={{
-            flex: 1, maxWidth: 260,
-            background: '#E8E8E8', borderRadius: 20,
-            display: 'flex', alignItems: 'center', padding: '7px 12px', gap: 6,
-          }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" strokeWidth="2" width="14" height="14">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input placeholder="搜索动态" style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: '#1A1A1A', flex: 1 }} />
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={() => showToast('相册功能开发中')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: 13 }}
+            >
+              相册
+            </button>
+            <span style={{ color: '#CCC' }}>|</span>
+            <button
+              onClick={() => showToast('拍摄功能开发中')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: 13 }}
+            >
+              拍摄
+            </button>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            style={{
-              background: '#07C160', color: '#fff',
-              border: 'none', borderRadius: 20,
-              padding: '8px 18px', fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-            }}
-          >
-            ✏ 发表动态
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={() => showToast('只看我功能开发中')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 13 }}
+            >
+              只看我
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                background: '#07C160', color: '#fff',
+                border: 'none', borderRadius: 20,
+                padding: '7px 16px', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              <PlusCircle size={14} /> 发表
+            </button>
+          </div>
         </div>
 
         {/* Feed */}
@@ -186,11 +188,12 @@ export default function MomentsPage() {
             const likeList = likes[moment.id] || []
             const commentList = comments[moment.id] || []
             const isOpen = openComments[moment.id]
-            const likedByMe = likeList.includes('我')
-            const avatarId = avatarIdByName[moment.authorName] || 0
-            const color = colorByName[moment.authorName] || '#888'
+            const likedByMe = likeList.includes('user')
+            const avatarId = characterAvatarMap[moment.authorId] ?? 0
             const isExpanded = expandedIds[moment.id]
             const isLong = moment.content.length > MAX_CONTENT_LEN
+            const displayName = characterNameMap[moment.authorId] ?? moment.authorId
+            const nameColor = characterColors[moment.authorId] ?? '#576B95'
 
             return (
               <div key={moment.id} style={{
@@ -201,19 +204,21 @@ export default function MomentsPage() {
                 {/* Author row */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
                   {avatarId > 0 ? (
-                    <CharacterAvatar avatarId={avatarId} size={44} />
+                    <div style={{ flexShrink: 0 }}>
+                      <CharacterAvatar avatarId={avatarId} size={44} />
+                    </div>
                   ) : (
                     <div style={{
                       width: 44, height: 44, borderRadius: 8,
                       background: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0,
                     }}>
-                      {moment.authorName[0]}
+                      {displayName[0]}
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 600, fontSize: 14, color: '#07C160' }}>{moment.authorName}</span>
+                      <span style={{ fontWeight: 600, fontSize: 14, color: nameColor }}>{displayName}</span>
                       <span style={{ fontSize: 11, color: '#AAAAAA' }}>{moment.time}</span>
                     </div>
 
@@ -223,72 +228,70 @@ export default function MomentsPage() {
                       {isLong && !isExpanded && (
                         <span
                           onClick={() => setExpandedIds(prev => ({ ...prev, [moment.id]: true }))}
-                          style={{ color: '#07C160', cursor: 'pointer', fontSize: 13, marginLeft: 4 }}
+                          style={{ color: '#576B95', cursor: 'pointer', fontSize: 13, marginLeft: 4 }}
                         >
                           展开
                         </span>
                       )}
                     </p>
 
-                    {/* Image grid */}
-                    <ImageGrid count={moment.imageCount} color={color} />
+                    {/* Image grid — CSS gradient divs, no emoji */}
+                    {moment.hasImages && moment.imageColors.length > 0 && (
+                      <ImageGrid imageColors={moment.imageColors} />
+                    )}
 
-                    {/* Actions */}
+                    {/* Actions row */}
                     <div style={{
                       borderTop: '1px solid #F0F0F0', marginTop: 12, paddingTop: 8, paddingBottom: 12,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16,
                     }}>
-                      {/* Likes display */}
-                      {likeList.length > 0 ? (
-                        <div style={{
-                          background: '#F5F5F5', borderRadius: 12,
-                          padding: '3px 10px', fontSize: 12,
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          flex: 1, marginRight: 12,
-                        }}>
-                          <span>👍</span>
-                          <span>
-                            {likeList.map((name, i) => (
-                              <span key={name}>
-                                <span style={{ color: '#07C160' }}>{name}</span>
-                                {i < likeList.length - 1 && <span style={{ color: '#888' }}>、</span>}
-                              </span>
-                            ))}
-                          </span>
-                        </div>
-                      ) : <div style={{ flex: 1 }} />}
-
-                      <div style={{ display: 'flex', gap: 12 }}>
-                        <button
-                          onClick={() => toggleLike(moment.id)}
-                          style={{
-                            border: 'none', background: 'none', cursor: 'pointer',
-                            fontSize: 13, color: likedByMe ? '#07C160' : '#888',
-                            display: 'flex', alignItems: 'center', gap: 3, padding: 0,
-                          }}
-                        >
-                          👍 {likedByMe ? '已赞' : '赞'}
-                        </button>
-                        <button
-                          onClick={() => setOpenComments(prev => ({ ...prev, [moment.id]: !prev[moment.id] }))}
-                          style={{
-                            border: 'none', background: 'none', cursor: 'pointer',
-                            fontSize: 13, color: '#888',
-                            display: 'flex', alignItems: 'center', gap: 3, padding: 0,
-                          }}
-                        >
-                          💬 {commentList.length > 0 ? commentList.length : '评论'}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => toggleLike(moment.id)}
+                        style={{
+                          border: 'none', background: 'none', cursor: 'pointer',
+                          fontSize: 13, color: likedByMe ? '#07C160' : '#888',
+                          display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+                        }}
+                      >
+                        <ThumbsUp size={14} fill={likedByMe ? '#07C160' : 'none'} />
+                        <span>{likedByMe ? '已赞' : '赞'}</span>
+                      </button>
+                      <button
+                        onClick={() => setOpenComments(prev => ({ ...prev, [moment.id]: !prev[moment.id] }))}
+                        style={{
+                          border: 'none', background: 'none', cursor: 'pointer',
+                          fontSize: 13, color: '#888',
+                          display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+                        }}
+                      >
+                        <MessageSquare size={14} />
+                        <span>{commentList.length > 0 ? commentList.length : '评论'}</span>
+                      </button>
                     </div>
 
-                    {/* Comments */}
-                    {commentList.length > 0 && (
-                      <div style={{ background: '#F8F8F8', borderRadius: 8, padding: '8px 10px', marginBottom: 8 }}>
+                    {/* Like + comment zone */}
+                    {(likeList.length > 0 || commentList.length > 0) && (
+                      <div style={{
+                        background: '#F5F5F5', borderRadius: 6,
+                        padding: '8px 10px', marginBottom: 12,
+                      }}>
+                        {likeList.length > 0 && (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            fontSize: 13, marginBottom: commentList.length > 0 ? 6 : 0,
+                            borderBottom: commentList.length > 0 ? '1px solid #EAEAEA' : 'none',
+                            paddingBottom: commentList.length > 0 ? 6 : 0,
+                          }}>
+                            <ThumbsUp size={14} color="#576B95" />
+                            <span style={{ color: '#576B95' }}>{getLikerNames(likeList)}</span>
+                          </div>
+                        )}
                         {commentList.map((c, idx) => (
-                          <div key={idx} style={{ fontSize: 13, color: '#1A1A1A', marginBottom: idx < commentList.length - 1 ? 5 : 0 }}>
-                            <span style={{ color: '#07C160', fontWeight: 600 }}>{c.author}：</span>
-                            {c.text}
+                          <div key={idx} style={{ fontSize: 13, color: '#1A1A1A', marginTop: idx === 0 ? 0 : 4 }}>
+                            <span style={{ color: '#576B95', fontWeight: 600 }}>
+                              {characterNameMap[c.authorId] ?? c.authorId}：
+                            </span>
+                            {c.content}
                           </div>
                         ))}
                       </div>
@@ -334,27 +337,28 @@ export default function MomentsPage() {
           onClick={() => setShowModal(false)}
           style={{
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.2)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.3)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
             zIndex: 1000,
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#FFFFFF', borderRadius: 14,
-              padding: '20px 24px 24px', width: 440,
-              boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
+              background: '#FFFFFF',
+              borderRadius: '16px 16px 0 0',
+              padding: '16px 20px 32px',
+              width: '100%', maxWidth: 640,
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
             }}
           >
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <button
                 onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 18, padding: 0 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center' }}
               >
-                ✕
+                <X size={20} />
               </button>
               <span style={{ fontWeight: 600, fontSize: 15, color: '#1A1A1A' }}>发表动态</span>
               <button
@@ -375,45 +379,42 @@ export default function MomentsPage() {
               autoFocus
               value={newPostText}
               onChange={e => setNewPostText(e.target.value)}
-              placeholder="想说点什么..."
+              placeholder="你想说什么？"
               rows={4}
               style={{
-                width: '100%', border: '1px solid #E5E5E5', borderRadius: 10,
-                padding: '10px 12px', fontSize: 14, outline: 'none',
+                width: '100%', border: 'none', borderRadius: 8,
+                padding: '10px 0', fontSize: 15, outline: 'none',
                 resize: 'none', fontFamily: 'inherit', color: '#1A1A1A',
-                background: '#FAFAFA',
+                background: 'transparent',
                 boxSizing: 'border-box',
               }}
             />
 
-            {/* Bottom toolbar */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              {[
-                { icon: '📷', label: '添加图片', stub: '图片功能开发中' },
-                { icon: '😊', label: '表情', stub: '表情功能开发中' },
-                { icon: '📍', label: '位置', stub: '位置功能开发中' },
-              ].map(item => (
-                <button
-                  key={item.label}
-                  onClick={() => showToast(item.stub)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    background: '#F5F5F5', border: 'none', borderRadius: 20,
-                    padding: '5px 12px', fontSize: 12, color: '#666',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span>{item.icon}</span> {item.label}
-                </button>
-              ))}
-              <div style={{ flex: 1 }} />
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                background: '#F5F5F5', borderRadius: 20, padding: '5px 12px', fontSize: 12, color: '#666',
-              }}>
-                🌏 所有好友
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="10" height="10">
-                  <polyline points="6 9 12 15 18 9"/>
+            {/* Add image area */}
+            <div
+              onClick={() => showToast('图片功能开发中')}
+              style={{
+                border: '1.5px dashed #D1D5DB', borderRadius: 8,
+                padding: '18px', marginBottom: 16, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                color: '#AAAAAA',
+              }}
+            >
+              <ImageIcon size={20} color="#CCCCCC" />
+              <span style={{ fontSize: 13 }}>添加图片</span>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              borderTop: '1px solid #F0F0F0', paddingTop: 12,
+              fontSize: 13, color: '#888',
+            }}>
+              <span>可见范围</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span>所有好友</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                  <polyline points="9 18 15 12 9 6"/>
                 </svg>
               </div>
             </div>
