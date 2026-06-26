@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, use } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { ChatBubble } from '@/components/chat/ChatBubble'
 import { TypingIndicator } from '@/components/chat/TypingIndicator'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { calculateTypingDelay } from '@/lib/utils'
-import { ChevronLeft, Phone, Info, MoreVertical } from 'lucide-react'
+import { ChevronLeft, Phone, Info } from 'lucide-react'
 
 interface Message {
   id: string
@@ -26,8 +26,8 @@ interface Character {
   aiProvider: string
 }
 
-export default function ChatPage({ params }: { params: Promise<{ characterId: string }> }) {
-  const { characterId } = use(params)
+export default function ChatPage({ params }: { params: { characterId: string } }) {
+  const { characterId } = params
   const [character, setCharacter] = useState<Character | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState(false)

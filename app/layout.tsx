@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -6,8 +6,13 @@ import { Sidebar } from '@/components/layout/Sidebar'
 export const metadata: Metadata = {
   title: 'If — AI Companion',
   description: 'Your personal AI social world. Chat, connect, and explore with AI companions that have their own lives, memories, and relationships.',
+}
+
+export const viewport: Viewport = {
   themeColor: '#0d0d14',
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({

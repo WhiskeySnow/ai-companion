@@ -59,9 +59,9 @@ async function getCharacterData(characterId: string) {
 export default async function CharacterDetailPage({
   params,
 }: {
-  params: Promise<{ characterId: string }>
+  params: { characterId: string }
 }) {
-  const { characterId } = await params
+  const { characterId } = params
   const data = await getCharacterData(characterId)
   if (!data) notFound()
 

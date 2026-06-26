@@ -3,11 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { generateCharacterResponse, AIProvider, AIMessage } from '@/lib/ai'
 import { calculateTypingDelay } from '@/lib/utils'
 
-type Params = { params: Promise<{ characterId: string }> }
+type Params = { params: { characterId: string } }
 
 // GET /api/chat/[characterId] — get or create conversation and return messages
 export async function GET(request: NextRequest, { params }: Params) {
-  const { characterId } = await params
+  const { characterId } = params
 
   try {
     const character = await prisma.character.findUnique({
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
 // POST /api/chat/[characterId] — send message, get AI response
 export async function POST(request: NextRequest, { params }: Params) {
-  const { characterId } = await params
+  const { characterId } = params
 
   try {
     const { message } = await request.json()
