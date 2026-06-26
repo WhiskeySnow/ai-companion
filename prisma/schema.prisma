@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Character {
+  id          String   @id @default(cuid())
+  name        String
+  avatar      String?
+  bio         String
+  personality String   // JSON: traits, interests, communication style
+  backstory   String
+  aiProvider  String   @default("mock") // openai | gemini | claude | mock
+  aiModel     String?
+  voiceId     String?  // ElevenLabs voice ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  sentMessages     Message[]       @relation("SentMessages")
+  conversations    Conversation[]  @relation("CharacterConversations")
+
+  // Character relationships
+  relationshipsA   CharacterRelationship[] @relation("CharacterA")
+  relationshipsB   CharacterRelationship[] @relation("CharacterB")
+
+  // Memories about user
+  memories         Memory[]
+
+  // Feed posts
+  posts            Post[]
+
+  // Thoughts/discussions about user
+  thoughts         CharacterThought[]
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  characterId String
+  userId      String   @default("user") // future multi-user support
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  character   Character @relation("CharacterConversations", fields: [characterId], references: [id])
+  messages    Message[]
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  characterId    String?  // null = user message
+  role           String   // "user" | "assistant"
+  content        String
+  mediaUrl       String?  // for image messages
+  mediaType      String?  // "image" | "voice" | "video"
+  createdAt      DateTime @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  character      Character?   @relation("SentMessages", fields: [characterId], references: [id])
+}
+
+model Memory {
+  id          String   @id @default(cuid())
+  characterId String
+  type        String   // "fact" | "emotion" | "event" | "preference"
+  content     String
+  importance  Int      @default(5) // 1-10
+  createdAt   DateTime @default(now())
+
+  character   Character @relation(fields: [characterId], references: [id])
+}
+
+model CharacterRelationship {
+  id           String   @id @default(cuid())
+  characterAId String
+  characterBId String
+  relationship String   // "friends" | "rivals" | "crushes" | "besties"
+  intimacy     Int      @default(50) // 0-100
+  notes        String?  // What they think of each other
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  characterA   Character @relation("CharacterA", fields: [characterAId], references: [id])
+  characterB   Character @relation("CharacterB", fields: [characterBId], references: [id])
+
+  @@unique([characterAId, characterBId])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  characterId String
+  content     String
+  imageUrl    String?
+  likes       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  character   Character @relation(fields: [characterId], references: [id])
+  comments    Comment[]
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  postId      String
+  characterId String?  // null = user comment
+  content     String
+  createdAt   DateTime @default(now())
+
+  post        Post @relation(fields: [postId], references: [id])
+}
+
+model CharacterThought {
+  id          String   @id @default(cuid())
+  characterId String
+  aboutUserId String   @default("user")
+  content     String   // What the character thinks about the user
+  sentiment   String   // "positive" | "negative" | "neutral" | "curious"
+  createdAt   DateTime @default(now())
+
+  character   Character @relation(fields: [characterId], references: [id])
+}
