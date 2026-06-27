@@ -43,29 +43,83 @@ function parseTime(ts: string): number {
   return isNaN(h) || isNaN(m) ? -1 : h * 60 + m
 }
 
-/**
- * Returns the HH:MM string to show as a centered time chip BEFORE messages[i],
- * or null if no chip is needed.
- * Rules:
- *   - Skip system_time rows themselves
- *   - First message after a date-divider → always show time
- *   - Gap ≥ 5 min from previous message → show time
- */
+// ─── timestamp formatting ────────────────────────────────────
+
+const DAY_MAP: Record<string, number> = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0,'天':0 }
+
+function parseDateLabel(label: string): Date {
+  const today = new Date(); today.setHours(0,0,0,0)
+  if (label === '今天') return new Date(today)
+  if (label === '昨天') { const d = new Date(today); d.setDate(d.getDate()-1); return d }
+
+  if (label.startsWith('上周')) {
+    const target = DAY_MAP[label.slice(2)] ?? 1
+    const dow = today.getDay() === 0 ? 7 : today.getDay()   // Mon=1…Sun=7
+    const thisMonday = new Date(today); thisMonday.setDate(today.getDate() - dow + 1)
+    const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate() - 7)
+    const offset = target === 0 ? 6 : target - 1            // Mon=0…Sun=6
+    const d = new Date(lastMonday); d.setDate(lastMonday.getDate() + offset); return d
+  }
+  if (label.startsWith('周')) {
+    const target = DAY_MAP[label.slice(1)] ?? 1
+    let back = (today.getDay() - target + 7) % 7
+    if (back === 0) back = 7
+    const d = new Date(today); d.setDate(d.getDate() - back); return d
+  }
+  const dm = label.match(/^(\d+)天前$/)
+  if (dm) { const d = new Date(today); d.setDate(d.getDate()-+dm[1]); return d }
+  const wm = label.match(/^(\d+)周前$/)
+  if (wm) { const d = new Date(today); d.setDate(d.getDate()-+wm[1]*7); return d }
+  return new Date(today)
+}
+
+function getDateFromContext(msgs: MockMessage[], i: number): Date {
+  for (let j = i - 1; j >= 0; j--) {
+    if (msgs[j].role === 'system_time') return parseDateLabel(msgs[j].content)
+  }
+  return new Date()
+}
+
+function formatTimestamp(date: Date, timeStr: string): string {
+  if (!timeStr) return ''
+  const [hStr, mStr] = timeStr.split(':')
+  const h = parseInt(hStr ?? '0')
+  const m = mStr ?? '00'
+  const period = h < 12 ? '上午' : '下午'
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  const timeFmt = `${period} ${h12}:${m}`
+
+  const now = new Date()
+  const today = new Date(now); today.setHours(0,0,0,0)
+  const msgDay = new Date(date); msgDay.setHours(0,0,0,0)
+  const diffDays = Math.round((today.getTime() - msgDay.getTime()) / 86400000)
+
+  if (diffDays === 0) return timeFmt
+  if (diffDays === 1) return `昨天 ${timeFmt}`
+  if (diffDays <= 6) {
+    const names = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六']
+    return `${names[msgDay.getDay()]} ${timeFmt}`
+  }
+  if (msgDay.getFullYear() === now.getFullYear()) {
+    return `${msgDay.getMonth()+1}月${msgDay.getDate()}日 ${timeFmt}`
+  }
+  return `${msgDay.getFullYear()}年${msgDay.getMonth()+1}月${msgDay.getDate()}日 ${timeFmt}`
+}
+
 function getStampBefore(msgs: MockMessage[], i: number): string | null {
   const msg = msgs[i]
   if (msg.role === 'system_time' || !msg.timestamp) return null
 
   let prevTs: string | null = null
-  let passedSystem = false
   for (let j = i - 1; j >= 0; j--) {
-    if (msgs[j].role === 'system_time') { passedSystem = true; break }
-    if (msgs[j].timestamp)              { prevTs = msgs[j].timestamp; break }
+    if (msgs[j].role === 'system_time') break
+    if (msgs[j].timestamp) { prevTs = msgs[j].timestamp; break }
   }
 
-  if (!prevTs) return msg.timestamp           // first after date chip (or very first)
-  if (passedSystem && !prevTs) return msg.timestamp
+  const label = formatTimestamp(getDateFromContext(msgs, i), msg.timestamp)
+  if (!prevTs) return label
   const gap = parseTime(msg.timestamp) - parseTime(prevTs)
-  return gap >= 5 ? msg.timestamp : null
+  return gap >= 5 ? label : null
 }
 
 // ─── sub-components ─────────────────────────────────────────
@@ -556,9 +610,9 @@ export default function MessagesPage() {
           display: 'flex', flexDirection: 'column', gap: 0,
         }}>
           {currentMessages.map((msg, i) => {
-            /* ── Date chip ── */
+            /* system_time rows are invisible date-context markers only */
             if (msg.role === 'system_time') {
-              return <TimeChip key={msg.id} label={msg.content} />
+              return <div key={msg.id} style={{ display: 'none' }} aria-hidden />
             }
 
             const stampToShow   = getStampBefore(currentMessages, i)
