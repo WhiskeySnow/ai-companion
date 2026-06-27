@@ -125,7 +125,7 @@ function TimeChip({ label }: { label: string }) {
       <span style={{
         fontSize: 11, color: '#888888',
         background: 'rgba(0,0,0,0.08)',
-        padding: '2px 10px', borderRadius: 10,
+        padding: '2px 6px', borderRadius: 10,
       }}>
         {label}
       </span>
