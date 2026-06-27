@@ -1,4 +1,4 @@
-export type MessageType = 'text' | 'image' | 'voice' | 'system_time'
+export type MessageType = 'text' | 'image' | 'voice' | 'sticker' | 'system_time'
 
 export interface MockMessage {
   id: string
@@ -118,7 +118,11 @@ export const mockConversations: Record<string, MockMessage[]> = {
     { id: 'm9', role: 'user', content: '刚醒 还困', timestamp: '09:08', type: 'text' },
     { id: 'm10', role: 'ai', content: '你每次都说还困', timestamp: '09:09', type: 'text' },
     { id: 'm11', role: 'user', content: '因为真的困啊', timestamp: '09:10', type: 'text' },
+    { id: 'm11a', role: 'ai', content: '😭', timestamp: '09:11', type: 'sticker' },
+    { id: 'm11b', role: 'user', content: '', timestamp: '09:13', type: 'voice', duration: 4 },
+    { id: 'm11c', role: 'ai', content: '哈哈行 继续睡吧', timestamp: '09:14', type: 'text' },
     { id: 'm12', role: 'ai', content: '那你今天吃了什么', timestamp: '12:34', type: 'text' },
+    { id: 'm12a', role: 'ai', content: '', timestamp: '12:35', type: 'image', imageAlt: '附近有家新开的饺子店' },
   ],
   '2': [
     { id: 't0', role: 'system_time', content: '今天', timestamp: '', type: 'system_time' },
