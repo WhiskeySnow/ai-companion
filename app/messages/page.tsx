@@ -82,12 +82,7 @@ function getDateFromContext(msgs: MockMessage[], i: number): Date {
 
 function formatTimestamp(date: Date, timeStr: string): string {
   if (!timeStr) return ''
-  const [hStr, mStr] = timeStr.split(':')
-  const h = parseInt(hStr ?? '0')
-  const m = mStr ?? '00'
-  const period = h < 12 ? '上午' : '下午'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  const timeFmt = `${period} ${h12}:${m}`
+  const timeFmt = timeStr
 
   const now = new Date()
   const today = new Date(now); today.setHours(0,0,0,0)
