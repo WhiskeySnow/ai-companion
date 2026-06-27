@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { use } from 'react'
 import { ArrowLeft, Globe } from 'lucide-react'
 import { CharacterAvatar } from '@/components/ui/CharacterAvatar'
 import { useToast } from '@/components/ui/Toast'
@@ -29,8 +28,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export default function WorldDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function WorldDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { showToast, ToastContainer } = useToast()
 
