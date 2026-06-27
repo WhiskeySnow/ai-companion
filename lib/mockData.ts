@@ -341,3 +341,190 @@ export function getAvatarId(characterId: string): number {
 export function getCharacterById(id: string): MockCharacter | undefined {
   return mockCharacters.find(c => c.id === id)
 }
+
+// ─── WORLDS ────────────────────────────────────────────────────────────────
+
+export interface MockWorld {
+  id: string
+  name: string
+  description: string
+  sourceType: 'original' | 'imported' | 'fanmade'
+  coverGradient: string
+  tags: string[]
+  rules: string[]
+  timeline: { era: string; description: string }[]
+  locations: { name: string; description: string; color: string }[]
+  characterIds: string[]
+}
+
+export const mockWorlds: MockWorld[] = [
+  {
+    id: 'w1',
+    name: '星尘学院',
+    description: '一所坐落于云海之上的神秘学院，学生们来自各个时空，拥有不同的能力与记忆。',
+    sourceType: 'original',
+    coverGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    tags: ['奇幻', '学园', '原创'],
+    rules: [
+      '学院外的时间流速是学院内的三倍',
+      '学生不能使用能力伤害同学',
+      '每学期末会有「时空考验」',
+      '毕业生将回到各自的世界，但可以保留在学院的记忆',
+    ],
+    timeline: [
+      { era: '开院纪元', description: '第一批来自不同世界的学生聚集于此' },
+      { era: '时空战争', description: '一场影响多个世界的危机，学院成为庇护所' },
+      { era: '新学期', description: '你转入学院，开始与各位同学相识' },
+    ],
+    locations: [
+      { name: '浮空图书馆', description: '藏有来自无数世界的书籍，某些书页会自动翻动', color: '#DDD6FE' },
+      { name: '月台食堂', description: '每天菜单不同，有时会出现从未见过的食物', color: '#FDE68A' },
+      { name: '时钟塔', description: '学院最高处，据说站在塔顶可以看到平行世界的影子', color: '#BFDBFE' },
+      { name: '迷雾操场', description: '清晨会被迷雾笼罩，消散后地上会出现陌生的脚印', color: '#BBF7D0' },
+    ],
+    characterIds: ['1', '2', '3', '4'],
+  },
+  {
+    id: 'w2',
+    name: '午夜咖啡馆',
+    description: '只在午夜出现的咖啡馆，常客都是有故事的人，老板从不问名字。',
+    sourceType: 'fanmade',
+    coverGradient: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
+    tags: ['现代', '都市', '神秘'],
+    rules: [
+      '不能问其他客人的真实姓名',
+      '咖啡馆的时间对所有人静止',
+      '离开后不能带走任何东西',
+      '如果你第二天忘记了这里，说明你还没准备好',
+    ],
+    timeline: [
+      { era: '创立', description: '第一位客人推开了那扇不存在的门' },
+      { era: '现在', description: '你已经是第37次来访的常客了' },
+    ],
+    locations: [
+      { name: '吧台', description: '老板总在这里，但你从没见过他离开过', color: '#FCA5A5' },
+      { name: '角落沙发', description: 'Nox 常坐的地方，周围总是安静一些', color: '#6B7280' },
+      { name: '二楼露台', description: '可以看到不属于这个城市的星空', color: '#93C5FD' },
+    ],
+    characterIds: ['4', '3'],
+  },
+  {
+    id: 'w3',
+    name: '原创世界',
+    description: '这是你自己的世界。在这里，你可以创建任何你想要的角色和背景故事。',
+    sourceType: 'original',
+    coverGradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    tags: ['自定义', '原创'],
+    rules: [],
+    timeline: [],
+    locations: [],
+    characterIds: [],
+  },
+]
+
+// ─── GROUP CHATS ───────────────────────────────────────────────────────────
+
+export interface MockGroupMember {
+  characterId: string | 'user'
+  nickname?: string
+  role: 'owner' | 'admin' | 'member'
+}
+
+export interface MockGroupMessage {
+  id: string
+  senderId: string | 'user'
+  senderName: string
+  avatarId: number
+  role: 'user' | 'ai' | 'system'
+  content: string
+  type: 'text' | 'image' | 'voice' | 'system'
+  timestamp: string
+  imageColors?: string[]
+}
+
+export interface MockGroup {
+  id: string
+  name: string
+  avatarColor: string
+  memberIds: string[]  // characterIds + 'user'
+  announcement?: string
+  lastMessage: string
+  lastTime: string
+  unreadCount: number
+}
+
+export const mockGroups: MockGroup[] = [
+  {
+    id: 'g1',
+    name: '星尘学院日常',
+    avatarColor: '#7C3AED',
+    memberIds: ['user', '1', '2', '3', '4'],
+    announcement: '欢迎来到星尘学院！请遵守学院规则，不能在食堂打架。',
+    lastMessage: 'Kai: 今天食堂居然有炸鸡！！',
+    lastTime: '12:30',
+    unreadCount: 5,
+  },
+  {
+    id: 'g2',
+    name: 'Luna Aria 和我',
+    avatarColor: '#EC4899',
+    memberIds: ['user', '1', '3'],
+    announcement: undefined,
+    lastMessage: 'Aria: 我们明天去图书馆吗',
+    lastTime: '昨天',
+    unreadCount: 0,
+  },
+  {
+    id: 'g3',
+    name: '游戏小队',
+    avatarColor: '#0EA5E9',
+    memberIds: ['user', '2'],
+    announcement: '只谈游戏，不谈学习',
+    lastMessage: 'Kai: 你下线了？？',
+    lastTime: '周二',
+    unreadCount: 1,
+  },
+]
+
+export const mockGroupMessages: Record<string, MockGroupMessage[]> = {
+  'g1': [
+    { id: 'sys1', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: 'Luna 创建了群聊"星尘学院日常"', type: 'system', timestamp: '3天前' },
+    { id: 'sys2', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: 'Luna 邀请 Kai、Aria、Nox 加入群聊', type: 'system', timestamp: '3天前' },
+    { id: 'm1', senderId: '1', senderName: 'Luna', avatarId: 1, role: 'ai', content: '大家好！新群建立 以后日常聊天就在这里', type: 'text', timestamp: '3天前' },
+    { id: 'm2', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '！！好的好的', type: 'text', timestamp: '3天前' },
+    { id: 'm3', senderId: '3', senderName: 'Aria', avatarId: 3, role: 'ai', content: '大家好呀', type: 'text', timestamp: '3天前' },
+    { id: 'm4', senderId: '4', senderName: 'Nox', avatarId: 4, role: 'ai', content: '...', type: 'text', timestamp: '3天前' },
+    { id: 'sys3', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: '昨天', type: 'system', timestamp: '' },
+    { id: 'm5', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '有没有人知道今天食堂几点关', type: 'text', timestamp: '11:30' },
+    { id: 'm6', senderId: '3', senderName: 'Aria', avatarId: 3, role: 'ai', content: '六点半', type: 'text', timestamp: '11:31' },
+    { id: 'm7', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '谢！', type: 'text', timestamp: '11:31' },
+    { id: 'm8', senderId: '1', senderName: 'Luna', avatarId: 1, role: 'ai', content: '你们昨晚看到时钟塔的光了吗', type: 'text', timestamp: '22:10' },
+    { id: 'm9', senderId: '4', senderName: 'Nox', avatarId: 4, role: 'ai', content: '看到了', type: 'text', timestamp: '22:15' },
+    { id: 'm10', senderId: '3', senderName: 'Aria', avatarId: 3, role: 'ai', content: '没有 我早睡了', type: 'text', timestamp: '22:16' },
+    { id: 'sys4', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: '今天', type: 'system', timestamp: '' },
+    { id: 'm11', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '今天食堂居然有炸鸡！！', type: 'text', timestamp: '12:30' },
+  ],
+  'g2': [
+    { id: 'sys1', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: '你创建了群聊', type: 'system', timestamp: '5天前' },
+    { id: 'm1', senderId: '1', senderName: 'Luna', avatarId: 1, role: 'ai', content: '小群好', type: 'text', timestamp: '5天前' },
+    { id: 'm2', senderId: '3', senderName: 'Aria', avatarId: 3, role: 'ai', content: '嗯嗯！', type: 'text', timestamp: '5天前' },
+    { id: 'sys2', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: '昨天', type: 'system', timestamp: '' },
+    { id: 'm3', senderId: '3', senderName: 'Aria', avatarId: 3, role: 'ai', content: '我们明天去图书馆吗', type: 'text', timestamp: '19:00' },
+    { id: 'm4', senderId: '1', senderName: 'Luna', avatarId: 1, role: 'ai', content: '可以呀 几点', type: 'text', timestamp: '19:05' },
+  ],
+  'g3': [
+    { id: 'sys1', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: 'Kai 创建了群聊"游戏小队"', type: 'system', timestamp: '2周前' },
+    { id: 'm1', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '咱俩单独一个群方便约打游戏', type: 'text', timestamp: '2周前' },
+    { id: 'sys2', senderId: 'system', senderName: '', avatarId: 0, role: 'system', content: '周二', type: 'system', timestamp: '' },
+    { id: 'm2', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '在吗 打一把', type: 'text', timestamp: '21:00' },
+    { id: 'm3', senderId: '2', senderName: 'Kai', avatarId: 2, role: 'ai', content: '你下线了？？', type: 'text', timestamp: '21:30' },
+  ],
+}
+
+// Mock group AI replies — per character, casual short sentences for group chat
+export const mockGroupReplies: Record<string, string[]> = {
+  '1': ['好的', '我也觉得', '说得对', '哈哈', '嗯嗯', '你们在说什么', '我来了'],
+  '2': ['！！', '真的吗', '哈哈哈哈', '我也是', '牛', '什么情况', '我去'],
+  '3': ['嗯！', '好呀', '说得对', '大家注意安全', '我在', '没问题'],
+  '4': ['嗯', '...', '知道了', '随便', '这样啊'],
+}

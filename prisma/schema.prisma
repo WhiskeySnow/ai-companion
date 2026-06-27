@@ -7,6 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model World {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  sourceType    String   @default("original")  // "original" | "imported" | "fanmade"
+  coverColor    String   @default("#7C3AED")   // for gradient cover
+  rules         String?  // world rules / lore (text)
+  timeline      String?  // JSON: [{era, description}]
+  locations     String?  // JSON: [{name, description}]
+  tags          String?  // JSON: string[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  characters    Character[]
+}
+
 model Character {
   id          String   @id @default(cuid())
   name        String
@@ -19,6 +35,15 @@ model Character {
   voiceId     String?  // ElevenLabs voice ID
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // World system
+  worldId              String?
+  canonBackground      String?  // original character background
+  speechStyle          String?  // e.g. "古风", "现代", "二次元"
+  originalRelationships String? // JSON: relationships in source world
+  crossoverStatus      String?  @default("native") // "native" | "crossover" | "AU"
+
+  world                World?   @relation(fields: [worldId], references: [id])
 
   // Relations
   sentMessages     Message[]       @relation("SentMessages")
@@ -121,4 +146,53 @@ model CharacterThought {
   createdAt   DateTime @default(now())
 
   character   Character @relation(fields: [characterId], references: [id])
+}
+
+model GroupChat {
+  id          String   @id @default(cuid())
+  name        String
+  avatarColor String   @default("#07C160")
+  announcement String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     GroupMember[]
+  messages    GroupMessage[]
+  events      GroupEvent[]
+}
+
+model GroupMember {
+  id          String   @id @default(cuid())
+  groupId     String
+  characterId String?  // null = human user
+  isUser      Boolean  @default(false)
+  nickname    String?  // override name in this group
+  role        String   @default("member") // "owner" | "admin" | "member"
+  isMuted     Boolean  @default(false)
+  joinedAt    DateTime @default(now())
+
+  group       GroupChat @relation(fields: [groupId], references: [id])
+}
+
+model GroupMessage {
+  id          String   @id @default(cuid())
+  groupId     String
+  senderId    String?  // characterId or "user"
+  senderName  String
+  role        String   // "user" | "ai" | "system"
+  content     String
+  type        String   @default("text") // "text"|"image"|"voice"|"sticker"|"system"
+  createdAt   DateTime @default(now())
+
+  group       GroupChat @relation(fields: [groupId], references: [id])
+}
+
+model GroupEvent {
+  id          String   @id @default(cuid())
+  groupId     String
+  type        String   // "join" | "leave" | "rename" | "announce" | "relationship_change"
+  content     String   // human-readable description
+  createdAt   DateTime @default(now())
+
+  group       GroupChat @relation(fields: [groupId], references: [id])
 }
