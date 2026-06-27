@@ -577,36 +577,36 @@ export default function MessagesPage() {
                 <div style={{
                   display: 'flex',
                   justifyContent: isUser ? 'flex-end' : 'flex-start',
-                  alignItems: 'flex-end',
-                  gap: 7,
-                  marginTop: isFirstInGroup ? 8 : 2,
-                  marginBottom: isLastInGroup ? 4 : 0,
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  marginTop: isFirstInGroup ? 10 : 3,
+                  marginBottom: isLastInGroup ? 2 : 0,
                 }}>
-                  {/* AI avatar — only on last in group */}
+                  {/* AI avatar — only on first in group */}
                   {!isUser && (
-                    <div style={{ width: 32, flexShrink: 0, alignSelf: 'flex-start', marginTop: isFirstInGroup ? 0 : 2 }}>
+                    <div style={{ width: 34, flexShrink: 0 }}>
                       {isFirstInGroup
-                        ? <CharacterAvatar avatarId={selectedChar.avatarId} size={32} />
+                        ? <CharacterAvatar avatarId={selectedChar.avatarId} size={34} />
                         : null}
                     </div>
                   )}
 
                   <div style={{
-                    maxWidth: '62%',
+                    maxWidth: '65%',
                     display: 'flex', flexDirection: 'column',
                     alignItems: isUser ? 'flex-end' : 'flex-start',
-                    gap: 1,
+                    gap: 0,
                   }}>
                     {/* Name label for AI first-in-group */}
                     {!isUser && isFirstInGroup && (
-                      <span style={{ fontSize: 11.5, color: '#AAAAAA', marginLeft: 1, marginBottom: 2 }}>
+                      <span style={{ fontSize: 12, color: '#AAAAAA', marginLeft: 2, marginBottom: 3 }}>
                         {selectedChar.remark || selectedChar.name}
                       </span>
                     )}
 
                     {/* ── Sticker (no bubble) ── */}
                     {isSticker ? (
-                      <div style={{ fontSize: 52, lineHeight: 1, padding: '4px 2px', userSelect: 'none' }}>
+                      <div style={{ fontSize: 56, lineHeight: 1, padding: '4px 2px', userSelect: 'none' }}>
                         {msg.content}
                       </div>
                     ) : (
@@ -614,15 +614,15 @@ export default function MessagesPage() {
                       <div style={{
                         background: isUser ? '#95EC69' : '#FFFFFF',
                         borderRadius: isUser
-                          ? (isFirstInGroup ? '16px 4px 16px 16px' : '16px 16px 16px 16px')
-                          : (isFirstInGroup ? '4px 16px 16px 16px' : '16px 16px 16px 16px'),
+                          ? (isFirstInGroup ? '20px 6px 20px 20px' : '20px 20px 20px 20px')
+                          : (isFirstInGroup ? '6px 20px 20px 20px' : '20px 20px 20px 20px'),
                         padding: msg.type === 'voice'
-                          ? '9px 14px'
+                          ? '10px 14px'
                           : msg.type === 'image'
                           ? '3px'
-                          : '9px 13px',
-                        fontSize: 14, color: '#1A1A1A', lineHeight: 1.6,
-                        boxShadow: '0 1px 1px rgba(0,0,0,0.06)',
+                          : '10px 14px',
+                        fontSize: 15, color: '#1A1A1A', lineHeight: 1.5,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.07)',
                         wordBreak: 'break-word', overflow: 'hidden',
                         maxWidth: '100%',
                       }}>
