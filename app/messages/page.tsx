@@ -7,6 +7,7 @@ import {
   X, Play, Sparkles,
 } from 'lucide-react'
 import { CharacterAvatar } from '@/components/ui/CharacterAvatar'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 import { useToast } from '@/components/ui/Toast'
 import {
   mockCharacters, mockConversations, mockAIReplies,
@@ -453,7 +454,7 @@ export default function MessagesPage() {
           boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <CharacterAvatar avatarId={selectedChar.avatarId} size={34} />
+            <CharacterAvatar avatarId={selectedChar.avatarId} size={32} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>
@@ -497,7 +498,7 @@ export default function MessagesPage() {
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F0F0F0' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
               >
-                <Icon size={19} />
+                <Icon size={17} />
               </button>
             ))}
 
@@ -511,7 +512,7 @@ export default function MessagesPage() {
                   background: showMoreMenu ? '#F0F0F0' : 'none',
                 }}
               >
-                <MoreHorizontal size={19} />
+                <MoreHorizontal size={17} />
               </button>
               {showMoreMenu && (
                 <div
@@ -578,35 +579,35 @@ export default function MessagesPage() {
                   display: 'flex',
                   justifyContent: isUser ? 'flex-end' : 'flex-start',
                   alignItems: 'flex-start',
-                  gap: 8,
-                  marginTop: isFirstInGroup ? 10 : 3,
+                  gap: 6,
+                  marginTop: isFirstInGroup ? 8 : 2,
                   marginBottom: isLastInGroup ? 2 : 0,
                 }}>
                   {/* AI avatar — only on first in group */}
                   {!isUser && (
-                    <div style={{ width: 34, flexShrink: 0 }}>
+                    <div style={{ width: 30, flexShrink: 0 }}>
                       {isFirstInGroup
-                        ? <CharacterAvatar avatarId={selectedChar.avatarId} size={34} />
+                        ? <CharacterAvatar avatarId={selectedChar.avatarId} size={30} />
                         : null}
                     </div>
                   )}
 
                   <div style={{
-                    maxWidth: '65%',
+                    maxWidth: '55%',
                     display: 'flex', flexDirection: 'column',
                     alignItems: isUser ? 'flex-end' : 'flex-start',
                     gap: 0,
                   }}>
                     {/* Name label for AI first-in-group */}
                     {!isUser && isFirstInGroup && (
-                      <span style={{ fontSize: 12, color: '#AAAAAA', marginLeft: 2, marginBottom: 3 }}>
+                      <span style={{ fontSize: 11, color: '#AAAAAA', marginLeft: 2, marginBottom: 2 }}>
                         {selectedChar.remark || selectedChar.name}
                       </span>
                     )}
 
                     {/* ── Sticker (no bubble) ── */}
                     {isSticker ? (
-                      <div style={{ fontSize: 56, lineHeight: 1, padding: '4px 2px', userSelect: 'none' }}>
+                      <div style={{ fontSize: 46, lineHeight: 1, padding: '4px 2px', userSelect: 'none' }}>
                         {msg.content}
                       </div>
                     ) : (
@@ -614,14 +615,14 @@ export default function MessagesPage() {
                       <div style={{
                         background: isUser ? '#95EC69' : '#FFFFFF',
                         borderRadius: isUser
-                          ? (isFirstInGroup ? '20px 6px 20px 20px' : '20px 20px 20px 20px')
-                          : (isFirstInGroup ? '6px 20px 20px 20px' : '20px 20px 20px 20px'),
+                          ? (isFirstInGroup ? '12px 3px 12px 12px' : '12px 12px 12px 12px')
+                          : (isFirstInGroup ? '3px 12px 12px 12px' : '12px 12px 12px 12px'),
                         padding: msg.type === 'voice'
-                          ? '10px 14px'
+                          ? '7px 12px'
                           : msg.type === 'image'
                           ? '3px'
-                          : '10px 14px',
-                        fontSize: 15, color: '#1A1A1A', lineHeight: 1.5,
+                          : '7px 12px',
+                        fontSize: 13.5, color: '#1A1A1A', lineHeight: 1.45,
                         boxShadow: '0 1px 2px rgba(0,0,0,0.07)',
                         wordBreak: 'break-word', overflow: 'hidden',
                         maxWidth: '100%',
@@ -643,6 +644,13 @@ export default function MessagesPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* User avatar — shown on right, first message in each group */}
+                  {isUser && (
+                    <div style={{ width: 30, flexShrink: 0 }}>
+                      {isFirstInGroup ? <UserAvatar size={30} /> : null}
+                    </div>
+                  )}
                 </div>
               </React.Fragment>
             )
@@ -650,18 +658,18 @@ export default function MessagesPage() {
 
           {/* Typing bubble */}
           {isTyping && (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 7, marginTop: 8 }}>
-              <CharacterAvatar avatarId={selectedChar.avatarId} size={32} />
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginTop: 6 }}>
+              <CharacterAvatar avatarId={selectedChar.avatarId} size={30} />
               <div style={{
                 background: '#FFFFFF',
-                borderRadius: '4px 16px 16px 16px',
-                padding: '11px 16px',
-                display: 'flex', gap: 5, alignItems: 'center',
-                boxShadow: '0 1px 1px rgba(0,0,0,0.06)',
+                borderRadius: '3px 12px 12px 12px',
+                padding: '9px 14px',
+                display: 'flex', gap: 4, alignItems: 'center',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
               }}>
                 {[0,1,2].map(i => (
                   <div key={i} className="typing-dot" style={{
-                    width: 6, height: 6, borderRadius: '50%', background: '#CCCCCC',
+                    width: 5, height: 5, borderRadius: '50%', background: '#CCCCCC',
                     animationDelay: `${i * 0.22}s`,
                   }} />
                 ))}
@@ -741,7 +749,7 @@ export default function MessagesPage() {
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#333' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#666666' }}
             >
-              <Mic size={21} />
+              <Mic size={18} />
             </button>
 
             <textarea
@@ -772,14 +780,14 @@ export default function MessagesPage() {
                 transition: 'color 0.1s',
               }}
             >
-              <Smile size={21} />
+              <Smile size={19} />
             </button>
 
             <button
               onClick={() => showToast('图片发送功能开发中')}
               style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666666', padding: '5px 4px', flexShrink: 0, display: 'flex', alignItems: 'center' }}
             >
-              <Image size={20} />
+              <Image size={19} />
             </button>
 
             {input.trim() ? (
@@ -787,7 +795,7 @@ export default function MessagesPage() {
                 onClick={sendMessage}
                 style={{
                   background: '#07C160', color: '#fff', border: 'none', borderRadius: '50%',
-                  width: 34, height: 34,
+                  width: 32, height: 32,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s',
                 }}
@@ -806,7 +814,7 @@ export default function MessagesPage() {
                   transition: 'color 0.1s',
                 }}
               >
-                <Plus size={21} />
+                <Plus size={19} />
               </button>
             )}
           </div>
